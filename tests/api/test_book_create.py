@@ -124,6 +124,7 @@ class TestBookCreate:
         assert response.status_code == 400
         assert response.json()["code"] == "invalid"
         assert Book.objects.count() == 0
+        assert BookCopy.objects.count() == 0
 
     def test_create_ignores_search_query_on_response(self, db):
         make_librarian()
@@ -136,5 +137,9 @@ class TestBookCreate:
             HTTP_X_CSRFTOKEN=token,
         )
         assert response.status_code == 201
-        assert response.json()["title"] == "New"
+        body = response.json()
+        assert body["title"] == "New"
+        assert body["available_copies"] == 1
+        assert body["total_copies"] == 1
         assert Book.objects.count() == 1
+        assert BookCopy.objects.count() == 1

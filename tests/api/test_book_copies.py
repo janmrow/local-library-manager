@@ -49,9 +49,11 @@ class TestAddCopy:
         )
         assert response.status_code == 201
         body = response.json()
-        assert body["id"] > 0
+        copy = BookCopy.objects.get(inventory_code="LL-002")
+        assert body["id"] == copy.id
         assert body["inventory_code"] == "LL-002"
         assert body["book"] == book.pk
+        assert copy.book_id == book.pk
         assert BookCopy.objects.count() == 2
 
     def test_duplicate_code_returns_409_without_write(self, db):
@@ -114,6 +116,7 @@ class TestAddCopy:
     def test_invalid_code_returns_400_without_write(self, db):
         make_librarian()
         book = Book.objects.create(title="T", author="A")
+        BookCopy.objects.create(book=book, inventory_code="LL-001")
         test_client = csrf_client()
         token = login(test_client, "lib1", "pass12345")
         response = test_client.post(
@@ -123,7 +126,9 @@ class TestAddCopy:
             HTTP_X_CSRFTOKEN=token,
         )
         assert response.status_code == 400
-        assert BookCopy.objects.count() == 0
+        assert response.json()["code"] == "invalid"
+        assert Book.objects.count() == 1
+        assert BookCopy.objects.count() == 1
 
     def test_add_copy_ignores_search_query(self, db):
         make_librarian()
