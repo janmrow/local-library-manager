@@ -45,8 +45,9 @@ class Command(BaseCommand):
         group, _ = Group.objects.get_or_create(name="Librarians")
         user_model = get_user_model()
         for username, password in (DEMO_READER, DEMO_LIBRARIAN):
-            user, _ = user_model.objects.get_or_create(username=username)
-            user.set_password(password)
-            user.save(update_fields=["password"])
+            user, created = user_model.objects.get_or_create(username=username)
+            if created:
+                user.set_password(password)
+                user.save(update_fields=["password"])
         librarian = user_model.objects.get(username=DEMO_LIBRARIAN[0])
         librarian.groups.add(group)
