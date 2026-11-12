@@ -19,10 +19,7 @@ class BookCreateSerializer(serializers.Serializer):
     inventory_code = serializers.CharField(max_length=24)
 
     def validate_inventory_code(self, value):
-        try:
-            return normalize_inventory_code(value)
-        except DjangoValidationError as exc:
-            raise serializers.ValidationError(str(exc.messages[0]))
+        return normalize_code(value)
 
     def create(self, validated_data):
         book = Book.objects.create(
@@ -31,3 +28,18 @@ class BookCreateSerializer(serializers.Serializer):
         )
         BookCopy.objects.create(book=book, inventory_code=validated_data["inventory_code"])
         return book
+
+
+class CopyCreateSerializer(serializers.Serializer):
+    inventory_code = serializers.CharField(max_length=24)
+
+    def validate_inventory_code(self, value):
+        return normalize_code(value)
+
+
+def normalize_code(value):
+    """Shared inventory_code validation for catalogue writes."""
+    try:
+        return normalize_inventory_code(value)
+    except DjangoValidationError as exc:
+        raise serializers.ValidationError(str(exc.messages[0]))

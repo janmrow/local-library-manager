@@ -1,4 +1,4 @@
-"""Session and registration views (slice 2, step 4: logout added)."""
+"""Session and registration views (slice 2: accounts and session)."""
 
 from django.contrib.auth import authenticate, login, logout
 from django.utils.decorators import method_decorator
@@ -39,8 +39,9 @@ class SessionView(APIView):
 
     def post(self, request):
         enforce_csrf_without_session(request)
-        username = request.data.get("username", "")
-        password = request.data.get("password", "")
+        data = request.data if isinstance(request.data, dict) else {}
+        username = data.get("username", "")
+        password = data.get("password", "")
         if not username or not password:
             raise serializers.ValidationError("Invalid credentials.")
         user = authenticate(request, username=username, password=password)
