@@ -1,22 +1,40 @@
+from django.db import IntegrityError, transaction
 from django.db.models import Count, F, Q
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
-from rest_framework.viewsets import ReadOnlyModelViewSet
+from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet
+from rest_framework import mixins
 
+from accounts.permissions import IsLibrarian
 from catalog.models import Book
-from catalog.serializers import BookSerializer
+from catalog.serializers import BookCreateSerializer, BookSerializer
 
 
 class BookPagination(PageNumberPagination):
     page_size = 20
 
 
-class BookViewSet(ReadOnlyModelViewSet):
-    """Public catalogue browse (slice 1: list + retrieve only)."""
+class BookViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    GenericViewSet,
+):
+    """Public browse plus librarian create (slice 2: no update/delete)."""
 
-    serializer_class = BookSerializer
-    permission_classes = [AllowAny]
     pagination_class = BookPagination
+
+    def get_permissions(self):
+        if self.action == "create":
+            return [IsLibrarian()]
+        return [AllowAny()]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return BookCreateSerializer
+        return BookSerializer
 
     def get_queryset(self):
         queryset = (
@@ -35,3 +53,18 @@ class BookViewSet(ReadOnlyModelViewSet):
         if q:
             queryset = queryset.filter(Q(title__icontains=q) | Q(author__icontains=q))
         return queryset
+
+    def create(self, request, *args, **kwargs):
+        SessionAuthentication().enforce_csrf(request)
+        input_serializer = self.get_serializer(data=request.data)
+        input_serializer.is_valid(raise_exception=True)
+        try:
+            with transaction.atomic():
+                book = input_serializer.save()
+        except IntegrityError:
+            return Response(
+                {"code": "inventory_code_taken", "detail": "inventory_code already exists."},
+                status=409,
+            )
+        annotated = self.get_queryset().get(pk=book.pk)
+        return Response(BookSerializer(annotated).data, status=201)
