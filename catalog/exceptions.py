@@ -20,15 +20,15 @@ def _flatten_detail(data) -> str:
 
 def catalogue_exception_handler(exc, context):
     response = exception_handler(exc, context)
-    if response is None or not isinstance(response.data, dict):
+    if response is None:
         return response
-    if "code" in response.data:
+    if isinstance(response.data, dict) and "code" in response.data:
         return response
     if response.status_code == 400:
         response.data = {"code": "invalid", "detail": _flatten_detail(response.data)}
     elif response.status_code == 403:
         response.data = {"code": "forbidden", "detail": _flatten_detail(response.data)}
-    elif response.status_code == 404:
+    elif response.status_code == 404 and isinstance(response.data, dict):
         response.data = {
             "code": "not_found",
             "detail": response.data.get("detail", "Not found."),
