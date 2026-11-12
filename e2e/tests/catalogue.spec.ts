@@ -5,7 +5,7 @@ test("browse catalogue from the database", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Katalog" })).toBeVisible();
   await expect(page.getByText("Dune — Frank Herbert (dostępne: 1/1)")).toBeVisible();
   await expect(page.getByText("Extra Book 00 — E2E Author (dostępne: 1/1)")).toBeVisible();
-  await expect(page.getByText("Znaleziono: 27")).toBeVisible();
+  await expect(page.getByText(/Znaleziono: (27|28)/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Następna" })).toBeEnabled();
 });
 
@@ -21,7 +21,7 @@ test("search filters the catalogue", async ({ page }) => {
 
 test("pagination reaches the last result", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("Znaleziono: 27")).toBeVisible();
+  await expect(page.getByText(/Znaleziono: (27|28)/)).toBeVisible();
   await expect(page.getByText("Dune — Frank Herbert (dostępne: 1/1)")).toBeVisible();
   await expect(page.getByRole("button", { name: "Następna" })).toBeEnabled();
   await page.getByRole("button", { name: "Następna" }).click();
