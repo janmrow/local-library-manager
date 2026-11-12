@@ -2,9 +2,9 @@
 
 ## Branches
 
-- `main` is protected. Direct push to `main` is forbidden; landing only via the squash-merge button.
+- `main` is protected. Direct push to `main` is forbidden; landing only via the rebase-merge button.
 - Work in short-lived branches from up-to-date `main`: `feat/<kebab>`, `fix/<kebab>`, `test/<kebab>`, `chore/<kebab>`, `docs/<kebab>`. Example: `feat/catalogue-browse`, `fix/loan-409-on-retry`. Update the branch with rebase; no merge commits on branches.
-- One observable behaviour per branch; prefer a single commit per PR (fixups via `git commit --amend`). With several commits, each follows the subject format; the PR title describes the whole and becomes the squash subject.
+- One observable behaviour per branch; prefer a single commit per PR (fixups via `git commit --amend`). With several commits, each follows the subject format; the PR title describes the whole change.
 
 ## Commits
 
@@ -13,11 +13,11 @@
 
 ## Pull requests
 
-- Title uses commit subject format and becomes the squash subject, e.g. `feat: add catalogue search by author`.
+- Title uses commit subject format, e.g. `feat: add catalogue search by author`.
 - Body order: 1. Changed 2. Why 3. Slice (`n/a` for docs-only) + contract-change yes/no 4. Verification (commands + results) 5. Gaps. Contract change must list schema + examples + tests touched.
 - Gates (run from root): `uv run --locked --env-file .env pytest`, `uv run --locked --env-file .env python manage.py makemigrations --check --dry-run`, `git diff --exit-code uv.lock e2e/package-lock.json`. Run full `npx playwright test` in `e2e/` if UI, routes, or any slice-1/2/3 flow changed; otherwise state why skipped. No pre-commit or CI yet: paste gate outputs in PR body.
 - Slice gates: slice-1 gate is one pytest + one Playwright; full permission matrix + concurrency `201`/`409` are slice-3 gates; three flows + lockfiles + `makemigrations --check` are slice-4 release gates.
-- Merge: squash via GitHub, branch deleted after merge. Solo: author merges after self-review checklist + green gates. With collaborators: one approving review required (enforced in GitHub settings, not here).
+- Merge: rebase via GitHub, branch deleted after merge. Solo: author merges after self-review checklist + green gates. With collaborators: one approving review required (enforced in GitHub settings, not here).
 - Failure report: expected vs observed, evidence (request ID, log, SQL), likely layer, next check.
 
 ## Local verification

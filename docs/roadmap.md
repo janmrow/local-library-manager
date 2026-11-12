@@ -1,6 +1,6 @@
 # Roadmap
 
-Slice order is fixed. Each slice ends with a verifiable behaviour. The `docs/agent-context` harness merges to `main` before slice 1.
+Slice order is fixed. Each slice ends with a verifiable behaviour.
 
 ## 1. Catalogue slice
 

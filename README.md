@@ -1,6 +1,6 @@
 # Local Library Manager
 
-> Planning draft. The routes and commands below describe the intended first release. The route table is the release target — do not implement ahead: per-slice scope is in `docs/roadmap.md`. Slice 1 builds only `GET books/` rows.
+> Planning draft. The routes and commands below describe the intended first release. The route table is the release target — do not implement ahead: per-slice scope is in `docs/roadmap.md`. Slice 1 builds only `GET books/` rows. Full table accuracy is verified in slice 4.
 
 Local Library Manager is a small circulation app for a single library branch. Visitors can browse the catalogue. Readers can create an account, sign in and check out the copy they have in hand by entering its inventory code. A librarian can add books and copies and record returns at the desk.
 
