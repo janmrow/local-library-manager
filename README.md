@@ -25,7 +25,7 @@ uv run --locked --env-file .env python manage.py seed_demo
 uv run --locked --env-file .env python manage.py runserver 127.0.0.1:8000
 ```
 
-Open <http://127.0.0.1:8000/>. The demo dataset includes available and checked-out copies and local reader and librarian accounts. The seed command can be rerun on a demo database. Use `.env.example` to see the local settings and keep your own `.env` outside version control.
+Open <http://127.0.0.1:8000/>. The demo dataset currently holds two books with one available copy each; reader and librarian accounts, checked-out copies, and further flows arrive in later slices (see `docs/roadmap.md`). The seed command can be rerun on a demo database. Use `.env.example` to see the local settings and keep your own `.env` outside version control.
 
 ## API
 
@@ -69,7 +69,7 @@ Create the browser test database once and run the Chromium tests from `e2e/`.
 ```bash
 docker compose exec -T db createdb -U library library_e2e
 DB_NAME=library_e2e APP_ENV=e2e uv run --locked --env-file .env python manage.py migrate
-DB_NAME=library_e2e APP_ENV=e2e uv run --locked --env-file .env python manage.py seed_demo
+DB_NAME=library_e2e APP_ENV=e2e uv run --locked --env-file .env python manage.py seed_demo --extra-books 25
 export UV_ENV_FILE="$PWD/.env"
 cd e2e
 npm ci
@@ -77,7 +77,9 @@ npx playwright install --with-deps chromium
 npx playwright test
 ```
 
-Playwright starts its own app instance on port 8001 against `library_e2e`. Its three workflows cover public browsing, librarian catalogue changes, and reader checkout followed by a librarian return. GitHub Actions runs the backend and browser checks in independent PostgreSQL environments and retains the Playwright trace on failure. Traces may contain cookies and network snapshots, so use synthetic accounts only and check trace content before publishing; keep retention short.
+`--with-deps` needs root for system packages; without sudo run `npx playwright install chromium` instead.
+
+Playwright starts its own app instance on port 8001 against `library_e2e`. The suite will grow to three workflows — public browsing, librarian catalogue changes, and reader checkout followed by a librarian return; slice 1 covers public browsing, search, and pagination. CI (slice 4) will run the backend and browser checks in independent PostgreSQL environments and retain the Playwright trace on failure. Traces may contain cookies and network snapshots, so use synthetic accounts only and check trace content before publishing; keep retention short.
 
 ## Diagnose a failed checkout
 
