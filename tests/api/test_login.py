@@ -79,3 +79,15 @@ class TestLogin:
         )
         assert response.status_code == 400
         assert response.json()["code"] == "invalid"
+
+    def test_login_non_object_body_returns_400_envelope(self, db):
+        test_client = csrf_client()
+        token = get_token(test_client)
+        response = test_client.post(
+            "/api/v1/session/",
+            data=json.dumps([]),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        assert response.status_code == 400
+        assert response.json()["code"] == "invalid"

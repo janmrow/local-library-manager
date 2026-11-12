@@ -1,7 +1,6 @@
-from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Count, F, Q
-from rest_framework import mixins, serializers
+from rest_framework import mixins
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
@@ -10,18 +9,8 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from accounts.permissions import IsLibrarian
-from catalog.models import Book, BookCopy, normalize_inventory_code
-from catalog.serializers import BookCreateSerializer, BookSerializer
-
-
-class CopyCreateSerializer(serializers.Serializer):
-    inventory_code = serializers.CharField(max_length=24)
-
-    def validate_inventory_code(self, value):
-        try:
-            return normalize_inventory_code(value)
-        except DjangoValidationError as exc:
-            raise serializers.ValidationError(str(exc.messages[0]))
+from catalog.models import Book, BookCopy
+from catalog.serializers import BookCreateSerializer, BookSerializer, CopyCreateSerializer
 
 
 class BookPagination(PageNumberPagination):
@@ -31,7 +20,6 @@ class BookPagination(PageNumberPagination):
 class BookViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
-    mixins.CreateModelMixin,
     GenericViewSet,
 ):
     """Public browse plus librarian create (slice 2: no update/delete)."""
@@ -50,8 +38,8 @@ class BookViewSet(
             return CopyCreateSerializer
         return BookSerializer
 
-    def get_queryset(self):
-        queryset = (
+    def annotated_books(self):
+        return (
             Book.objects.annotate(
                 total_copies=Count("copies", distinct=True),
                 open_loans=Count(
@@ -63,6 +51,9 @@ class BookViewSet(
             .annotate(available_copies=F("total_copies") - F("open_loans"))
             .order_by("title", "id")
         )
+
+    def get_queryset(self):
+        queryset = self.annotated_books()
         q = self.request.query_params.get("q", "").strip()
         if q:
             queryset = queryset.filter(Q(title__icontains=q) | Q(author__icontains=q))
@@ -80,7 +71,7 @@ class BookViewSet(
                 {"code": "inventory_code_taken", "detail": "inventory_code already exists."},
                 status=409,
             )
-        annotated = self.get_queryset().get(pk=book.pk)
+        annotated = self.annotated_books().get(pk=book.pk)
         return Response(BookSerializer(annotated).data, status=201)
 
     @action(detail=True, methods=["post"], url_path="copies")

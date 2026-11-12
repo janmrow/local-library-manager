@@ -1,4 +1,4 @@
-"""Accounts routes (slice 2, step 2: registration added)."""
+"""Accounts routes (slice 2: registration and session)."""
 
 from django.urls import path
 

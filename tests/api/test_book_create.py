@@ -121,3 +121,17 @@ class TestBookCreate:
         assert response.status_code == 400
         assert response.json()["code"] == "invalid"
         assert Book.objects.count() == 0
+
+    def test_create_ignores_search_query_on_response(self, db):
+        make_librarian()
+        test_client = csrf_client()
+        token = login(test_client, "lib1", "pass12345")
+        response = test_client.post(
+            "/api/v1/books/?q=nothing-matching-xyz",
+            data=json.dumps({"title": "New", "author": "Auth", "inventory_code": "LL-012"}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        assert response.status_code == 201
+        assert response.json()["title"] == "New"
+        assert Book.objects.count() == 1
