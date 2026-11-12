@@ -27,7 +27,7 @@
 
 ## Local verification
 
-- Follow `README.md` run and test commands. No app code yet: do not invent commands.
+- Follow `README.md` run and test commands; do not invent commands.
 - Tests live in `tests/unit/`, `tests/api/`, `tests/integration/`. Deps are Django, DRF, psycopg, drf-spectacular, pytest plus pytest-django.
 - Slice-1 seed (rerunnable via `get_or_create`): `Book("Solaris","Stanisław Lem")` + copy `LL-001` (available) + 1 second book; `?q=lem` must hit Solaris. Reader/librarian accounts arrive with slice 2.
 - Give each test its own data. Concurrency check uses two independent signed-in clients with separate connections and barrier sync (no sleeps) and asserts one `201`, one `409`, one committed open loan.
