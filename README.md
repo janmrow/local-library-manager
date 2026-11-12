@@ -44,7 +44,7 @@ The generated OpenAPI document is at `/api/schema/`. The application uses Django
 | `GET /api/v1/loans/` | Signed-in user | Lists the caller's open loans. |
 | `GET /api/v1/loans/{id}/` | Loan owner | Reads one of the caller's loans. Returns `404` for a missing loan or a loan outside that scope. |
 | `POST /api/v1/loans/` | Signed-in user | Checks out a copy by inventory code. Returns `201` and the loan location. |
-| `GET /api/v1/staff/loans/?inventory_code=LL-001` | Librarian | Finds the open loan for that copy. Returns zero or one match. |
+| `GET /api/v1/staff/loans/?inventory_code=LL-001` | Librarian | Finds the open loan for that copy. Returns `200` with `[]` or `[loan]`. |
 | `POST /api/v1/loans/{id}/return/` | Librarian | Records the return of that loan. A retry returns the same `returned_at` with `200`. |
 
 ```bash
@@ -77,7 +77,7 @@ npx playwright install --with-deps chromium
 npx playwright test
 ```
 
-Playwright starts its own app instance on port 8001 against `library_e2e`. Its three workflows cover public browsing, librarian catalogue changes, and reader checkout followed by a librarian return. GitHub Actions runs the backend and browser checks in independent PostgreSQL environments and retains the Playwright trace on failure.
+Playwright starts its own app instance on port 8001 against `library_e2e`. Its three workflows cover public browsing, librarian catalogue changes, and reader checkout followed by a librarian return. GitHub Actions runs the backend and browser checks in independent PostgreSQL environments and retains the Playwright trace on failure. Traces may contain cookies and network snapshots, so use synthetic accounts only and check trace content before publishing; keep retention short.
 
 ## Diagnose a failed checkout
 

@@ -7,8 +7,8 @@ Django project `config` with apps `catalog`, `circulation`, `accounts` on one or
 ## Model
 
 - `accounts.User(AbstractUser): pass`; `AUTH_USER_MODEL="accounts.User"`.
-- `Book(title=CharField(255), author=CharField(255))`, `Meta.indexes=[Index(fields=["title","author"], name="catalog_book_search")]`.
-- `BookCopy(inventory_code=CharField(max_length=24, unique=True), book=FK(catalog.Book, CASCADE, related_name="copies"))`; normalize in `save()`: trim to uppercase, validate `^[A-Za-z0-9-]{3,24}$`.
+- `Book(title=CharField(255), author=CharField(255))`, no search index at start. `q` uses `icontains`; add an index only after `EXPLAIN` on the real query.
+- `BookCopy(inventory_code=CharField(max_length=24, unique=True), book=FK(catalog.Book, CASCADE, related_name="copies"))`; normalize with one shared function: trim → validate `^[A-Za-z0-9-]{3,24}$` on the trimmed input, before uppercase → uppercase. Validation lives in the serializer / `full_clean()`; plain `save()` does not call `full_clean()` automatically.
 - `Loan(copy=FK(catalog.BookCopy, CASCADE), reader=FK(accounts.User, CASCADE), borrowed_at=DateTimeField(auto_now_add=True), returned_at=DateTimeField(null=True,blank=True))`, `UniqueConstraint(fields=["copy"], condition=Q(returned_at__isnull=True), name="unique_open_loan_per_copy")`. The `Loan` table ships in slice 1; writes are deferred to slice 3.
 - `Librarians` group is created by data migration; demo accounts come from `seed_demo`.
 - Availability is derived from copies minus open loans, never stored.
@@ -21,12 +21,12 @@ Django project `config` with apps `catalog`, `circulation`, `accounts` on one or
 
 ## Write API
 
-- Code normalize: trim, validate 3–24 ASCII `[A-Za-z0-9-]`, uppercase before save or lookup.
+- Code normalize: trim → validate 3–24 ASCII `[A-Za-z0-9-]` on the trimmed input, before uppercase → uppercase, for both save and lookup with one shared function.
 - Create book with first copy in one transaction; duplicate code rolls back both and returns `409 inventory_code_taken`.
 - Checkout posts `{"inventory_code": "..."}`; success returns `201` with `Location: /api/v1/loans/{id}/`. Occupied copy returns `409 copy_unavailable` mapped after the atomic block rolls back.
 - Errors use `{"code": "...", "detail": "..."}` for `400/403/404/409`.
 - Scope: reader sees own loans only; out-of-scope loan ID returns `404`.
-- `GET /api/v1/staff/loans/?inventory_code=`: returns zero or one open loan object, no pagination.
+- `GET /api/v1/staff/loans/?inventory_code=`: always an array with `200` — `[]` or `[loan]` — no pagination. Full `loan` fields are specified before slice 3.
 - Return posts to the loan ID once; retry returns the same `returned_at` with `200` and leaves a later loan of the same copy open.
 
 ## Checkout sequence
