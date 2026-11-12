@@ -25,7 +25,9 @@ INSTALLED_APPS = [
 
 AUTH_USER_MODEL = "accounts.User"
 
-MIDDLEWARE: list[str] = []
+MIDDLEWARE = [
+    "django.middleware.common.CommonMiddleware",
+]
 
 ROOT_URLCONF = "config.urls"
 
