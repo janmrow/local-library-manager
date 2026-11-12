@@ -7,15 +7,15 @@ Local Library Manager for one library branch. Django 5.2 LTS, DRF, PostgreSQL 17
 ## Map — read conditionally
 
 - Scope, API, commands: `README.md` — only for run, API, or command tasks
-- Process, branches, PR, diagnosis: `CONTRIBUTING.md` — only for commit, PR, or diagnosis tasks
+- Process, branches, PR, diagnosis: `CONTRIBUTING.md` — for commit, PR, or diagnosis tasks, plus gates when implementing or reviewing
 - Local settings: `.env.example` — only when running DB or app
 - Data model and write rules: `docs/architecture.md` — on model, shape, or schema changes
-- Slices and order: `docs/roadmap.md` — when planning a slice
+- Slices and order: `docs/roadmap.md` — when planning a slice, plus current-slice exit criteria when implementing or reviewing
 - Rationale: `docs/decisions/` — when touching the decided area
 
 ## Commands
 
-Use `README.md` commands as source. Run the focused test while iterating; on code or contract changes finish with full `pytest` plus `makemigrations --check --dry-run` (docs-only: skip). Keep `uv.lock` and `e2e/package-lock.json` current (when present in repo).
+Use `README.md` commands as source. Run the focused test while iterating; on code or contract changes finish with full `pytest` plus `makemigrations --check --dry-run` (docs-only: skip). Keep `uv.lock` and `e2e/package-lock.json` current when present; check consistency with `uv sync --locked` and `npm ci`, review diffs together with manifests.
 
 ## Boundaries
 
@@ -39,5 +39,5 @@ Use `README.md` commands as source. Run the focused test while iterating; on cod
 ## Guardrails
 
 - Always: read files, run relevant checks, confirm important results via HTTP, SQL, or trace.
-- Ask first: deletions, migrations, schema changes, new dependencies.
+- Ask first: deletions, scope expansion beyond the approved slice plan, destructive migrations, shared-data ops. An approved slice plan pre-authorizes its models, migrations, and dependencies.
 - Never: direct-push to main, commit secrets or `.env`, write to prod.
