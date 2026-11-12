@@ -48,11 +48,10 @@ class TestAddCopy:
             HTTP_X_CSRFTOKEN=token,
         )
         assert response.status_code == 201
-        assert response.json() == {
-            "id": response.json()["id"],
-            "inventory_code": "LL-002",
-            "book": book.pk,
-        }
+        body = response.json()
+        assert body["id"] > 0
+        assert body["inventory_code"] == "LL-002"
+        assert body["book"] == book.pk
         assert BookCopy.objects.count() == 2
 
     def test_duplicate_code_returns_409_without_write(self, db):
@@ -125,3 +124,17 @@ class TestAddCopy:
         )
         assert response.status_code == 400
         assert BookCopy.objects.count() == 0
+
+    def test_add_copy_ignores_search_query(self, db):
+        make_librarian()
+        book = Book.objects.create(title="T", author="A")
+        test_client = csrf_client()
+        token = login(test_client, "lib1", "pass12345")
+        response = test_client.post(
+            f"/api/v1/books/{book.pk}/copies/?q=nothing-matching-xyz",
+            data=json.dumps({"inventory_code": "LL-009"}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        assert response.status_code == 201
+        assert BookCopy.objects.count() == 1

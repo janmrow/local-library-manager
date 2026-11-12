@@ -42,7 +42,9 @@ test("librarian catalogue changes via API", async ({ page, request }) => {
     expect(create.status()).toBe(409);
     const found = await request.get(`/api/v1/books/?q=${encodeURIComponent(TITLE)}`);
     expect(found.status()).toBe(200);
-    bookId = (await found.json()).results[0].id;
+    const results = (await found.json()).results;
+    expect(results.length).toBeGreaterThan(0);
+    bookId = results[0].id;
   }
 
   const copy = await request.post(`/api/v1/books/${bookId}/copies/`, {

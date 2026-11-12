@@ -74,3 +74,19 @@ class TestRegistration:
         assert response.status_code == 400
         assert response.json()["code"] == "invalid"
         assert get_user_model().objects.count() == 0
+
+    def test_privilege_fields_are_ignored(self, db):
+        test_client = csrf_client()
+        token = get_token(test_client)
+        response = test_client.post(
+            "/api/v1/accounts/",
+            data=json.dumps(
+                {"username": "reader1", "password": "pass12345", "is_staff": True, "groups": [1]}
+            ),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        assert response.status_code == 201
+        user = get_user_model().objects.get(username="reader1")
+        assert user.is_staff is False
+        assert user.groups.filter(name="Librarians").exists() is False

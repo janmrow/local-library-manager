@@ -83,6 +83,7 @@ class TestBookCreate:
         assert response.status_code == 403
         assert response.json()["code"] == "forbidden"
         assert Book.objects.count() == 0
+        assert BookCopy.objects.count() == 0
 
     def test_anonymous_returns_403_without_db_write(self, db):
         test_client = csrf_client()
@@ -95,6 +96,7 @@ class TestBookCreate:
         )
         assert response.status_code == 403
         assert Book.objects.count() == 0
+        assert BookCopy.objects.count() == 0
 
     def test_librarian_without_csrf_returns_403_without_db_write(self, db):
         make_librarian()
@@ -107,6 +109,7 @@ class TestBookCreate:
         )
         assert response.status_code == 403
         assert Book.objects.count() == 0
+        assert BookCopy.objects.count() == 0
 
     def test_invalid_code_returns_400_without_db_write(self, db):
         make_librarian()
