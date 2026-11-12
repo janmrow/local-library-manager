@@ -20,3 +20,6 @@ e2e/playwright-report/
 # playwright auth state and traces (may contain cookies/snapshots)
 playwright/.auth/
 e2e/.auth/
+
+# personal local OpenCode config (never commit)
+.opencode/

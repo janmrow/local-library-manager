@@ -14,10 +14,15 @@
 ## Pull requests
 
 - Title uses commit subject format, e.g. `feat: add catalogue search by author`.
-- Body order: 1. Changed 2. Why 3. Slice (`n/a` for docs-only) + contract-change yes/no 4. Verification (commands + results) 5. Gaps. Contract change must list schema + examples + tests touched.
-- Gates (run from root): `uv run --locked --env-file .env pytest`, `uv run --locked --env-file .env python manage.py makemigrations --check --dry-run`, `git diff --exit-code uv.lock e2e/package-lock.json`. Run full `npx playwright test` in `e2e/` if UI, routes, or any slice-1/2/3 flow changed; otherwise state why skipped. No pre-commit or CI yet: paste gate outputs in PR body.
-- Slice gates: slice-1 gate is one pytest + one Playwright; full permission matrix + concurrency `201`/`409` are slice-3 gates; three flows + lockfiles + `makemigrations --check` are slice-4 release gates.
+- Body uses Markdown headings in this order: `## Changed`, `## Why`, `## Slice / Contract`, `## Verification`, `## Gaps`. Contract change must list schema + examples + tests touched.
+- Gates (run from root): `uv run --locked --env-file .env pytest`, `uv run --locked --env-file .env python manage.py makemigrations --check --dry-run`, `git diff --exit-code -- uv.lock e2e/package-lock.json` (only when the files exist; missing before the first deps is not a fail). Consistency via `uv sync --locked` and `npm ci`; review lockfile diffs together with manifests. Run full `npx playwright test` in `e2e/` if UI, routes, or any slice-1/2/3 flow changed; otherwise state why skipped. No pre-commit or CI yet: paste gate outputs under `## Verification`.
+- Slice gates:
+  - Slice 1: browse scenarios (`pytest` + Playwright browse + `curl` vs SQL) + fresh-checkout harness repro. OpenAPI is explicitly deferred to slice 4.
+  - Slice 2: permission tests at the first protected endpoint + second Playwright flow.
+  - Slice 3: full permission matrix + concurrency `201`/`409` (separate connections, no sleeps) + idempotent return + third flow.
+  - Slice 4: three flows + lockfiles + `makemigrations --check` + OpenAPI + diagnosis note.
 - Merge: rebase via GitHub, branch deleted after merge. Solo: author merges after self-review checklist + green gates. With collaborators: one approving review required (enforced in GitHub settings, not here).
+- Handoff for an interrupted slice: leave a note in the existing issue — state, last verification, blocker, next step. No parallel plan system; no `CLAUDE.md` duplicate (`AGENTS.md` is the entry).
 - Failure report: expected vs observed, evidence (request ID, log, SQL), likely layer, next check.
 
 ## Local verification
@@ -25,7 +30,8 @@
 - Follow `README.md` run and test commands. No app code yet: do not invent commands.
 - Tests live in `tests/unit/`, `tests/api/`, `tests/integration/`. Deps are Django, DRF, psycopg, drf-spectacular, pytest plus pytest-django.
 - Slice-1 seed (rerunnable via `get_or_create`): `Book("Solaris","Stanisław Lem")` + copy `LL-001` (available) + 1 second book; `?q=lem` must hit Solaris. Reader/librarian accounts arrive with slice 2.
-- Give each test its own data. Concurrency check uses two independent signed-in clients and asserts one `201`, one `409`, one committed open loan.
+- Give each test its own data. Concurrency check uses two independent signed-in clients with separate connections and barrier sync (no sleeps) and asserts one `201`, one `409`, one committed open loan.
+- Return check covers parallel returns and retry of an old loan after re-loan.
 
 ## Diagnosis
 
