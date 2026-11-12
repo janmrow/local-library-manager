@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <title>Katalog — Biblioteka</title>
+  </head>
+  <body>
+    <h1>Katalog</h1>
+    <form id="search-form">
+      <label for="q">Szukaj</label>
+      <input id="q" name="q" type="search" placeholder="tytuł lub autor" />
+      <button type="submit">Szukaj</button>
+    </form>
+    <p id="status" role="status"></p>
+    <ul id="books"></ul>
+    <div>
+      <button id="prev" type="button" disabled>Poprzednia</button>
+      <button id="next" type="button" disabled>Następna</button>
+    </div>
+    <script type="module">
+      import { apiGet } from "/static/js/api.js";
+
+      const list = document.getElementById("books");
+      const status = document.getElementById("status");
+      const input = document.getElementById("q");
+      const prevButton = document.getElementById("prev");
+      const nextButton = document.getElementById("next");
+
+      let latestRequest = 0;
+      let previousUrl = null;
+      let nextUrl = null;
+
+      async function render(url) {
+        const requestId = ++latestRequest;
+        status.textContent = "Ładowanie…";
+        prevButton.disabled = true;
+        nextButton.disabled = true;
+        try {
+          const data = await apiGet(url);
+          if (requestId !== latestRequest) return;
+          list.innerHTML = "";
+          for (const book of data.results) {
+            const item = document.createElement("li");
+            item.textContent = `${book.title} — ${book.author} (dostępne: ${book.available_copies}/${book.total_copies})`;
+            list.appendChild(item);
+          }
+          status.textContent = `Znaleziono: ${data.count}`;
+          previousUrl = data.previous;
+          nextUrl = data.next;
+          prevButton.disabled = !previousUrl;
+          nextButton.disabled = !nextUrl;
+        } catch (error) {
+          if (requestId !== latestRequest) return;
+          status.textContent = "Nie udało się wczytać katalogu.";
+        }
+      }
+
+      function searchUrl(query) {
+        return `/api/v1/books/?q=${encodeURIComponent(query)}`;
+      }
+
+      document.getElementById("search-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        render(searchUrl(input.value.trim()));
+      });
+
+      prevButton.addEventListener("click", () => {
+        if (previousUrl) render(previousUrl);
+      });
+
+      nextButton.addEventListener("click", () => {
+        if (nextUrl) render(nextUrl);
+      });
+
+      render(searchUrl(""));
+    </script>
+  </body>
+</html>
