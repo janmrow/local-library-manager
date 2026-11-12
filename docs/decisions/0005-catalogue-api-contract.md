@@ -2,6 +2,7 @@
 
 Date: 2026-11-12
 Status: Accepted
+Amended: 2026-11-12 — staff lookup is `[]`/`[loan]` with `200`.
 
 ## Context
 
@@ -9,7 +10,7 @@ Slice 1 needs fixed response shapes so pytest, UI, and docs assert the same cont
 
 ## Decision
 
-List and detail share `id`, `title`, `author`, `available_copies`, `total_copies`. Search `q` is `icontains` on title and author ordered by title. Errors are `{"code": "...", "detail": "..."}` with `copy_unavailable` and `inventory_code_taken`. Success `Location` is the path `/api/v1/loans/{id}/`. Staff lookup returns zero or one open loan object without pagination.
+List and detail share `id`, `title`, `author`, `available_copies`, `total_copies`. Search `q` is `icontains` on title and author ordered by title. Errors are `{"code": "...", "detail": "..."}` with `copy_unavailable` and `inventory_code_taken`. Success `Location` is the path `/api/v1/loans/{id}/`. Staff lookup always returns an array with `200`: `[]` or `[loan]`, without pagination.
 
 ## Consequences
 

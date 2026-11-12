@@ -31,4 +31,4 @@
 
 - Follow `X-Request-ID` from response to server log, then check loan rows in PostgreSQL.
 - Note format: `Expected and observed / Evidence / Likely layer / Next action`.
-- Keep credentials, cookies, and personal fields out of logs and artifacts.
+- Keep credentials, cookies, and personal fields out of logs and artifacts. Traces stay local (gitignored); in PRs attach only redacted excerpts, never raw traces.

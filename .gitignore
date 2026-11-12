@@ -1,0 +1,22 @@
+# local env — real .env stays outside version control, .env.example is tracked
+.env
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# node / e2e
+node_modules/
+test-results/
+playwright-report/
+e2e/test-results/
+e2e/playwright-report/
+
+# playwright auth state and traces (may contain cookies/snapshots)
+playwright/.auth/
+e2e/.auth/
