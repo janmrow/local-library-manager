@@ -1,11 +1,15 @@
 import { expect, test } from "@playwright/test";
 
+// library_e2e persists between runs: 27 seeded rows plus at most one
+// idempotent book from librarian.spec.ts, hence 27|28.
+const COUNT_RE = /Znaleziono: (27|28)/;
+
 test("browse catalogue from the database", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Katalog" })).toBeVisible();
   await expect(page.getByText("Dune — Frank Herbert (dostępne: 1/1)")).toBeVisible();
   await expect(page.getByText("Extra Book 00 — E2E Author (dostępne: 1/1)")).toBeVisible();
-  await expect(page.getByText(/Znaleziono: (27|28)/)).toBeVisible();
+  await expect(page.getByText(COUNT_RE)).toBeVisible();
   await expect(page.getByRole("button", { name: "Następna" })).toBeEnabled();
 });
 
@@ -21,7 +25,7 @@ test("search filters the catalogue", async ({ page }) => {
 
 test("pagination reaches the last result", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText(/Znaleziono: (27|28)/)).toBeVisible();
+  await expect(page.getByText(COUNT_RE)).toBeVisible();
   await expect(page.getByText("Dune — Frank Herbert (dostępne: 1/1)")).toBeVisible();
   await expect(page.getByRole("button", { name: "Następna" })).toBeEnabled();
   await page.getByRole("button", { name: "Następna" }).click();

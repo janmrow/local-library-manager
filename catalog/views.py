@@ -54,9 +54,10 @@ class BookViewSet(
 
     def get_queryset(self):
         queryset = self.annotated_books()
-        q = self.request.query_params.get("q", "").strip()
-        if q:
-            queryset = queryset.filter(Q(title__icontains=q) | Q(author__icontains=q))
+        if self.action == "list":
+            q = self.request.query_params.get("q", "").strip()
+            if q:
+                queryset = queryset.filter(Q(title__icontains=q) | Q(author__icontains=q))
         return queryset
 
     def create(self, request, *args, **kwargs):
