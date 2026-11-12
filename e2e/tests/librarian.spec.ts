@@ -43,8 +43,9 @@ test("librarian catalogue changes via API", async ({ page, request }) => {
     const found = await request.get(`/api/v1/books/?q=${encodeURIComponent(TITLE)}`);
     expect(found.status()).toBe(200);
     const results = (await found.json()).results;
-    expect(results.length).toBeGreaterThan(0);
-    bookId = results[0].id;
+    const existing = results.find((b: { title: string }) => b.title === TITLE);
+    expect(existing).toBeDefined();
+    bookId = existing.id;
   }
 
   const copy = await request.post(`/api/v1/books/${bookId}/copies/`, {
@@ -66,6 +67,11 @@ test("librarian catalogue changes via API", async ({ page, request }) => {
     headers: { "X-CSRFToken": await csrfToken(request) },
   });
   expect(readerLogin.status()).toBe(200);
+  expect(await readerLogin.json()).toMatchObject({
+    authenticated: true,
+    username: "reader",
+    is_librarian: false,
+  });
   const denied = await request.post("/api/v1/books/", {
     data: { title: "Nope", author: "Nope", inventory_code: "E2E-DENIED" },
     headers: { "X-CSRFToken": await csrfToken(request) },
