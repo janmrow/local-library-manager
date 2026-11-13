@@ -6,6 +6,8 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client
 
+from accounts.permissions import LIBRARIANS_GROUP
+
 
 def csrf_client():
     return Client(enforce_csrf_checks=True)
@@ -34,7 +36,7 @@ class TestRegistration:
         assert "password" not in body
         user = get_user_model().objects.get(username="reader1")
         assert user.check_password("pass12345")
-        assert user.groups.filter(name="Librarians").exists() is False
+        assert user.groups.filter(name=LIBRARIANS_GROUP).exists() is False
 
     def test_register_without_csrf_returns_403_without_db_write(self, db):
         test_client = csrf_client()
@@ -78,7 +80,7 @@ class TestRegistration:
     def test_privilege_fields_are_ignored(self, db):
         from django.contrib.auth.models import Group, Permission
 
-        group, _ = Group.objects.get_or_create(name="Librarians")
+        group, _ = Group.objects.get_or_create(name=LIBRARIANS_GROUP)
         perm = Permission.objects.filter(codename="add_book").first()
         payload = {
             "username": "reader1",

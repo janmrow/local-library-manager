@@ -5,6 +5,14 @@ from rest_framework import serializers
 from catalog.models import Book, BookCopy, normalize_inventory_code
 
 
+def normalize_code(value):
+    """Shared inventory_code validation for catalogue writes."""
+    try:
+        return normalize_inventory_code(value)
+    except DjangoValidationError as exc:
+        raise serializers.ValidationError(str(exc.messages[0]))
+
+
 class BookSerializer(serializers.ModelSerializer):
     available_copies = serializers.IntegerField(read_only=True)
     total_copies = serializers.IntegerField(read_only=True)
@@ -37,11 +45,3 @@ class CopyCreateSerializer(serializers.Serializer):
 
     def validate_inventory_code(self, value):
         return normalize_code(value)
-
-
-def normalize_code(value):
-    """Shared inventory_code validation for catalogue writes."""
-    try:
-        return normalize_inventory_code(value)
-    except DjangoValidationError as exc:
-        raise serializers.ValidationError(str(exc.messages[0]))

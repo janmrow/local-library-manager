@@ -10,6 +10,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from accounts.permissions import LIBRARIANS_GROUP
 from accounts.serializers import RegistrationSerializer
 
 
@@ -23,7 +24,7 @@ def session_state(user) -> dict:
         return {
             "authenticated": True,
             "username": user.username,
-            "is_librarian": user.groups.filter(name="Librarians").exists(),
+            "is_librarian": user.groups.filter(name=LIBRARIANS_GROUP).exists(),
         }
     return {"authenticated": False, "username": None, "is_librarian": False}
 

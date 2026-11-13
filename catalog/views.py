@@ -1,7 +1,6 @@
 from django.db import IntegrityError, transaction
 from django.db.models import Count, F, Q
 from rest_framework import mixins
-from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
@@ -9,8 +8,16 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from accounts.permissions import IsLibrarian
+from accounts.views import enforce_csrf_without_session
 from catalog.models import Book, BookCopy
 from catalog.serializers import BookCreateSerializer, BookSerializer, CopyCreateSerializer
+
+
+def inventory_code_taken():
+    return Response(
+        {"code": "inventory_code_taken", "detail": "inventory_code already exists."},
+        status=409,
+    )
 
 
 class BookPagination(PageNumberPagination):
@@ -61,23 +68,20 @@ class BookViewSet(
         return queryset
 
     def create(self, request, *args, **kwargs):
-        SessionAuthentication().enforce_csrf(request)
+        enforce_csrf_without_session(request)
         input_serializer = self.get_serializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
         try:
             with transaction.atomic():
                 book = input_serializer.save()
         except IntegrityError:
-            return Response(
-                {"code": "inventory_code_taken", "detail": "inventory_code already exists."},
-                status=409,
-            )
+            return inventory_code_taken()
         annotated = self.annotated_books().get(pk=book.pk)
         return Response(BookSerializer(annotated).data, status=201)
 
     @action(detail=True, methods=["post"], url_path="copies")
     def add_copy(self, request, pk=None):
-        SessionAuthentication().enforce_csrf(request)
+        enforce_csrf_without_session(request)
         book = self.get_object()
         input_serializer = self.get_serializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
@@ -87,10 +91,7 @@ class BookViewSet(
                     book=book, inventory_code=input_serializer.validated_data["inventory_code"]
                 )
         except IntegrityError:
-            return Response(
-                {"code": "inventory_code_taken", "detail": "inventory_code already exists."},
-                status=409,
-            )
+            return inventory_code_taken()
         return Response(
             {"id": copy.id, "inventory_code": copy.inventory_code, "book": book.pk},
             status=201,

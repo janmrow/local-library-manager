@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import Client
 
+from accounts.permissions import LIBRARIANS_GROUP
 from catalog.models import Book, BookCopy
 
 
@@ -28,7 +29,7 @@ def login(test_client, username, password):
 
 def make_librarian(username="lib1", password="pass12345"):
     user = get_user_model().objects.create_user(username=username, password=password)
-    group, _ = Group.objects.get_or_create(name="Librarians")
+    group, _ = Group.objects.get_or_create(name=LIBRARIANS_GROUP)
     user.groups.add(group)
     return user
 
