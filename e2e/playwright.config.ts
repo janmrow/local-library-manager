@@ -2,6 +2,9 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests",
+  // Serial files: specs share one persistent library_e2e database and pin
+  // catalogue counts, so parallel workers would race each other's writes.
+  workers: 1,
   use: {
     baseURL: "http://127.0.0.1:8001",
   },

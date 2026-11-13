@@ -1,0 +1,123 @@
+import { APIRequestContext, expect, test } from "@playwright/test";
+
+// Shared with librarian.spec.ts: this flow creates no books of its own, so the
+// pinned catalogue counts never drift. Runs serially (workers: 1) with the
+// other files against the shared library_e2e database.
+const TITLE = "E2E Librarian Book";
+const AUTHOR = "E2E Author";
+const BOOK_CODE = "E2E-LIB-01";
+const READER = { username: "reader", password: "reader12345" };
+const LIBRARIAN = { username: "librarian", password: "librarian12345" };
+
+async function csrfToken(request: APIRequestContext): Promise<string> {
+  const state = await request.storageState();
+  const cookie = state.cookies.find((c) => c.name === "csrftoken");
+  if (!cookie) throw new Error("missing csrftoken cookie");
+  return cookie.value;
+}
+
+async function loginAs(
+  request: APIRequestContext,
+  account: { username: string; password: string },
+): Promise<string> {
+  await request.get("/api/v1/session/");
+  const anonymousToken = await csrfToken(request);
+  const login = await request.post("/api/v1/session/", {
+    data: account,
+    headers: { "X-CSRFToken": anonymousToken },
+  });
+  expect(login.status()).toBe(200);
+  return csrfToken(request);
+}
+
+async function ensureBook(request: APIRequestContext, token: string) {
+  const create = await request.post("/api/v1/books/", {
+    data: { title: TITLE, author: AUTHOR, inventory_code: BOOK_CODE },
+    headers: { "X-CSRFToken": token },
+  });
+  if (create.status() === 201) return;
+  expect(create.status()).toBe(409);
+  const found = await request.get(`/api/v1/books/?q=${encodeURIComponent(TITLE)}`);
+  expect(found.status()).toBe(200);
+  const existing = (await found.json()).results.find(
+    (b: { title: string }) => b.title === TITLE,
+  );
+  expect(existing).toBeDefined();
+}
+
+test("reader checkout followed by librarian return", async ({ page, request }) => {
+  let token = await loginAs(request, LIBRARIAN);
+  await ensureBook(request, token);
+
+  token = await loginAs(request, READER);
+  let checkout = await request.post("/api/v1/loans/", {
+    data: { inventory_code: BOOK_CODE.toLowerCase() },
+    headers: { "X-CSRFToken": token },
+  });
+  if (checkout.status() === 409) {
+    // A previous aborted run left the copy checked out: return it, retry.
+    token = await loginAs(request, LIBRARIAN);
+    const stale = await request.get(
+      `/api/v1/staff/loans/?inventory_code=${BOOK_CODE}`,
+    );
+    expect(stale.status()).toBe(200);
+    const [open] = await stale.json();
+    expect(open).toBeDefined();
+    const cleanup = await request.post(`/api/v1/loans/${open.id}/return/`, {
+      data: {},
+      headers: { "X-CSRFToken": token },
+    });
+    expect(cleanup.status()).toBe(200);
+    token = await loginAs(request, READER);
+    checkout = await request.post("/api/v1/loans/", {
+      data: { inventory_code: BOOK_CODE },
+      headers: { "X-CSRFToken": token },
+    });
+  }
+  expect(checkout.status()).toBe(201);
+  const loan = await checkout.json();
+  expect(loan).toMatchObject({ inventory_code: BOOK_CODE, returned_at: null });
+  expect(checkout.headers()["location"]).toBe(`/api/v1/loans/${loan.id}/`);
+  expect(checkout.headers()["cache-control"]).toBe("no-store");
+
+  const mine = await request.get("/api/v1/loans/");
+  expect(mine.status()).toBe(200);
+  expect((await mine.json()).map((l: { id: number }) => l.id)).toContain(loan.id);
+
+  token = await loginAs(request, LIBRARIAN);
+  const found = await request.get(
+    `/api/v1/staff/loans/?inventory_code=${BOOK_CODE.toLowerCase()}`,
+  );
+  expect(found.status()).toBe(200);
+  expect(await found.json()).toMatchObject([{ id: loan.id }]);
+
+  const returned = await request.post(`/api/v1/loans/${loan.id}/return/`, {
+    data: {},
+    headers: { "X-CSRFToken": token },
+  });
+  expect(returned.status()).toBe(200);
+  const stamp = (await returned.json()).returned_at;
+  expect(stamp).not.toBeNull();
+
+  const retry = await request.post(`/api/v1/loans/${loan.id}/return/`, {
+    data: {},
+    headers: { "X-CSRFToken": await csrfToken(request) },
+  });
+  expect(retry.status()).toBe(200);
+  expect((await retry.json()).returned_at).toBe(stamp);
+
+  const gone = await request.get(
+    `/api/v1/staff/loans/?inventory_code=${BOOK_CODE}`,
+  );
+  expect(gone.status()).toBe(200);
+  expect(await gone.json()).toEqual([]);
+
+  await page.goto("/");
+  await page.getByLabel("Szukaj").fill(TITLE);
+  await page.getByRole("button", { name: "Szukaj" }).click();
+  await expect(page.getByText(TITLE).first()).toBeVisible();
+  const body = await page.textContent("body");
+  const availability = body?.match(/dostępne: (\d+)\/(\d+)/);
+  expect(availability).not.toBeNull();
+  expect(availability?.[1]).toBe(availability?.[2]);
+});
