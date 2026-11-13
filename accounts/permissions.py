@@ -13,3 +13,12 @@ class IsLibrarian(BasePermission):
     def has_permission(self, request, view):
         user = request.user
         return user.is_authenticated and user.groups.filter(name=LIBRARIANS_GROUP).exists()
+
+
+class IsSignedIn(BasePermission):
+    """Allow any authenticated user; anonymous gets 403 (not 401)."""
+
+    message = "Authentication required."
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated
