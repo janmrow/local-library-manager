@@ -38,6 +38,23 @@ class TestLogin:
         assert response.status_code == 200
         assert response.json() == {"authenticated": True, "username": "lib1", "is_librarian": True}
 
+    def test_reader_login_returns_is_librarian_false(self, db):
+        get_user_model().objects.create_user(username="reader1", password="pass12345")
+        test_client = csrf_client()
+        token = get_token(test_client)
+        response = test_client.post(
+            "/api/v1/session/",
+            data=json.dumps({"username": "reader1", "password": "pass12345"}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        assert response.status_code == 200
+        assert response.json() == {
+            "authenticated": True,
+            "username": "reader1",
+            "is_librarian": False,
+        }
+
     def test_login_success_sets_session_and_rotates_csrf(self, db):
         get_user_model().objects.create_user(username="reader1", password="pass12345")
         test_client = csrf_client()
