@@ -143,4 +143,26 @@ class TestAddCopy:
             HTTP_X_CSRFTOKEN=token,
         )
         assert response.status_code == 201
+        body = response.json()
+        assert body["inventory_code"] == "LL-009"
+        assert body["book"] == book.pk
+        stored = BookCopy.objects.get(inventory_code="LL-009")
+        assert body["id"] == stored.id
+        assert stored.book_id == book.pk
         assert BookCopy.objects.count() == 1
+
+    def test_missing_inventory_code_returns_400_without_write(self, db):
+        make_librarian()
+        book = Book.objects.create(title="T", author="A")
+        test_client = csrf_client()
+        token = login(test_client, "lib1", "pass12345")
+        response = test_client.post(
+            f"/api/v1/books/{book.pk}/copies/",
+            data=json.dumps({}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        assert response.status_code == 400
+        assert response.json()["code"] == "invalid"
+        assert Book.objects.count() == 1
+        assert BookCopy.objects.count() == 0
