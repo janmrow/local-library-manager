@@ -144,3 +144,64 @@ class TestBookCreate:
         assert body["total_copies"] == 1
         assert Book.objects.count() == 1
         assert BookCopy.objects.count() == 1
+
+    def test_missing_title_or_author_returns_400_without_db_write(self, db):
+        make_librarian()
+        test_client = csrf_client()
+        token = login(test_client, "lib1", "pass12345")
+        for payload in (
+            {"author": "Auth", "inventory_code": "LL-013"},
+            {"title": "New", "inventory_code": "LL-013"},
+            {"title": "", "author": "Auth", "inventory_code": "LL-013"},
+        ):
+            response = test_client.post(
+                "/api/v1/books/",
+                data=json.dumps(payload),
+                content_type="application/json",
+                HTTP_X_CSRFTOKEN=token,
+            )
+            assert response.status_code == 400
+            assert response.json()["code"] == "invalid"
+        assert Book.objects.count() == 0
+        assert BookCopy.objects.count() == 0
+
+    def test_read_your_write_after_create(self, db):
+        make_librarian()
+        test_client = csrf_client()
+        token = login(test_client, "lib1", "pass12345")
+        response = test_client.post(
+            "/api/v1/books/",
+            data=json.dumps({"title": "Fresh", "author": "Auth", "inventory_code": "LL-014"}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        assert response.status_code == 201
+        book_id = response.json()["id"]
+        detail = test_client.get(f"/api/v1/books/{book_id}/")
+        assert detail.json() == {
+            "id": book_id,
+            "title": "Fresh",
+            "author": "Auth",
+            "available_copies": 1,
+            "total_copies": 1,
+        }
+        listed = test_client.get("/api/v1/books/", {"q": "Fresh"})
+        assert listed.json()["count"] == 1
+        assert listed.json()["results"][0]["id"] == book_id
+
+    def test_update_and_delete_are_not_allowed(self, db):
+        make_librarian()
+        book = Book.objects.create(title="T", author="A")
+        BookCopy.objects.create(book=book, inventory_code="LL-001")
+        test_client = csrf_client()
+        token = login(test_client, "lib1", "pass12345")
+        for method in ("put", "patch", "delete"):
+            response = getattr(test_client, method)(
+                f"/api/v1/books/{book.pk}/",
+                data=json.dumps({"title": "Hacked"}),
+                content_type="application/json",
+                HTTP_X_CSRFTOKEN=token,
+            )
+            assert response.status_code == 405
+        assert Book.objects.get(pk=book.pk).title == "T"
+        assert BookCopy.objects.count() == 1
