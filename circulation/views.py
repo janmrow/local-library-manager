@@ -1,6 +1,7 @@
-"""Loan endpoints (slice 3: reader checkout; reads/staff/return land in later steps)."""
+"""Loan endpoints (slice 3: checkout + scoped reads; staff/return land next)."""
 
 from django.db import IntegrityError
+from django.http import Http404
 from rest_framework import mixins
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
@@ -19,11 +20,38 @@ def loan_envelope(code: str, detail: str, status: int) -> Response:
     return Response({"code": code, "detail": detail}, status=status, headers=NO_STORE)
 
 
-class LoanViewSet(mixins.CreateModelMixin, GenericViewSet):
-    """Checkout only in step 1; list/retrieve arrive with scoping tests."""
+class LoanViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+    GenericViewSet,
+):
+    """Caller-scoped loans: list shows the caller's open loans (bare array)."""
 
     permission_classes = [IsSignedIn]
     serializer_class = LoanSerializer
+
+    def scoped_loans(self):
+        return Loan.objects.filter(reader=self.request.user).select_related("copy")
+
+    def get_queryset(self):
+        queryset = self.scoped_loans().order_by("borrowed_at", "id")
+        if self.action == "list":
+            queryset = queryset.filter(returned_at__isnull=True)
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        return Response(
+            self.get_serializer(queryset, many=True).data, headers=NO_STORE
+        )
+
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            loan = self.get_object()
+        except Http404:
+            return loan_envelope("not_found", "Loan not found.", 404)
+        return Response(self.get_serializer(loan).data, headers=NO_STORE)
 
     def create(self, request, *args, **kwargs):
         enforce_csrf_without_session(request)
