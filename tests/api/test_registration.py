@@ -118,3 +118,39 @@ class TestRegistration:
         assert response.status_code == 400
         assert response.json()["code"] == "invalid"
         assert get_user_model().objects.count() == 0
+
+    def test_registration_does_not_log_in(self, db):
+        test_client = csrf_client()
+        token = get_token(test_client)
+        response = test_client.post(
+            "/api/v1/accounts/",
+            data=json.dumps({"username": "reader1", "password": "pass12345"}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        assert response.status_code == 201
+        state = test_client.get("/api/v1/session/")
+        assert state.json() == {"authenticated": False, "username": None, "is_librarian": False}
+
+    def test_password_with_surrounding_spaces_round_trips(self, db):
+        test_client = csrf_client()
+        token = get_token(test_client)
+        response = test_client.post(
+            "/api/v1/accounts/",
+            data=json.dumps({"username": "reader1", "password": "  pass12345  "}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        assert response.status_code == 201
+        user = get_user_model().objects.get(username="reader1")
+        assert user.check_password("  pass12345  ") is True
+        assert user.check_password("pass12345") is False
+        login_token = test_client.get("/api/v1/session/").cookies["csrftoken"].value
+        login_response = test_client.post(
+            "/api/v1/session/",
+            data=json.dumps({"username": "reader1", "password": "  pass12345  "}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=login_token,
+        )
+        assert login_response.status_code == 200
+        assert login_response.json()["authenticated"] is True
