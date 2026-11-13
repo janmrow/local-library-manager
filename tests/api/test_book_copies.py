@@ -114,6 +114,26 @@ class TestAddCopy:
         assert response.status_code == 403
         assert BookCopy.objects.count() == 0
 
+    def test_non_post_methods_are_not_allowed(self, db):
+        make_librarian()
+        book = Book.objects.create(title="T", author="A")
+        BookCopy.objects.create(book=book, inventory_code="LL-001")
+        test_client = csrf_client()
+        token = login(test_client, "lib1", "pass12345")
+        get_response = test_client.get(
+            f"/api/v1/books/{book.pk}/copies/", HTTP_X_CSRFTOKEN=token
+        )
+        assert get_response.status_code == 405
+        for method in ("put", "patch", "delete"):
+            response = getattr(test_client, method)(
+                f"/api/v1/books/{book.pk}/copies/",
+                data=json.dumps({"inventory_code": "LL-009"}),
+                content_type="application/json",
+                HTTP_X_CSRFTOKEN=token,
+            )
+            assert response.status_code == 405
+        assert BookCopy.objects.count() == 1
+
     def test_invalid_code_returns_400_without_write(self, db):
         make_librarian()
         book = Book.objects.create(title="T", author="A")
