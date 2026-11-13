@@ -1,8 +1,8 @@
-"""Circulation routes (slice 3 step 2: checkout + scoped reads)."""
+"""Circulation routes (slice 3 step 3: checkout + scoped reads + staff lookup)."""
 
 from django.urls import path, re_path
 
-from circulation.views import LoanViewSet
+from circulation.views import LoanViewSet, StaffLoanListView
 
 urlpatterns = [
     path(
@@ -16,4 +16,5 @@ urlpatterns = [
         LoanViewSet.as_view({"get": "retrieve"}),
         name="loan-detail",
     ),
+    path("staff/loans/", StaffLoanListView.as_view(), name="staff-loans"),
 ]

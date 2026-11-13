@@ -1,14 +1,16 @@
-"""Loan endpoints (slice 3: checkout + scoped reads; staff/return land next)."""
+"""Loan endpoints (slice 3: checkout + scoped reads + staff lookup)."""
 
 from django.db import IntegrityError
 from django.http import Http404
-from rest_framework import mixins
+from rest_framework import mixins, serializers
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 
-from accounts.permissions import IsSignedIn
+from accounts.permissions import IsLibrarian, IsSignedIn
 from accounts.views import enforce_csrf_without_session
 from catalog.models import BookCopy
+from catalog.serializers import normalize_code
 from circulation.models import Loan
 from circulation.serializers import CheckoutSerializer, LoanSerializer
 
@@ -78,3 +80,31 @@ class LoanViewSet(
             status=201,
             headers={"Location": f"/api/v1/loans/{loan.id}/", **NO_STORE},
         )
+
+
+class StaffLoanListView(APIView):
+    """Librarian lookup of the open loan for one copy; always 200 [] or [loan]."""
+
+    permission_classes = [IsLibrarian]
+
+    def get(self, request):
+        values = request.query_params.getlist("inventory_code")
+        if len(values) > 1:
+            return loan_envelope(
+                "invalid", "Only one inventory_code is allowed.", 400
+            )
+        raw = values[0] if values else ""
+        if not raw.strip():
+            return loan_envelope("invalid", "inventory_code is required.", 400)
+        try:
+            code = normalize_code(raw)
+        except serializers.ValidationError as exc:
+            detail = exc.detail[0] if isinstance(exc.detail, list) else str(exc.detail)
+            return loan_envelope("invalid", str(detail), 400)
+        open_loan = (
+            Loan.objects.filter(copy__inventory_code=code, returned_at__isnull=True)
+            .select_related("copy")
+            .first()
+        )
+        loans = [open_loan] if open_loan is not None else []
+        return Response(LoanSerializer(loans, many=True).data, headers=NO_STORE)
