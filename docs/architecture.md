@@ -26,6 +26,7 @@ Django project `config` with apps `catalog`, `circulation`, `accounts` on one or
 - Checkout posts `{"inventory_code": "..."}`; success returns `201` with `Location: /api/v1/loans/{id}/`. Occupied copy returns `409 copy_unavailable` mapped after the atomic block rolls back.
 - Errors use `{"code": "...", "detail": "..."}` for `400/403/404/409`.
 - Scope: reader sees own loans only; out-of-scope loan ID returns `404`.
+- `GET /api/v1/loans/` returns a bare array (no pagination): it lists only the caller's open loans, a bounded set.
 - `GET /api/v1/staff/loans/?inventory_code=`: always an array with `200` — `[]` or `[loan]` — no pagination. Full `loan` fields are specified before slice 3.
 - Return posts to the loan ID once; retry returns the same `returned_at` with `200` and leaves a later loan of the same copy open.
 
