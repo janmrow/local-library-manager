@@ -32,6 +32,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "circulation.middleware.NoStoreForLoansMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
