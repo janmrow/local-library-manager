@@ -1,7 +1,8 @@
-"""Loan endpoints (slice 3: checkout + scoped reads + staff lookup)."""
+"""Loan endpoints (slice 3: checkout + scoped reads + staff lookup + return)."""
 
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.http import Http404
+from django.utils import timezone
 from rest_framework import mixins, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -108,3 +109,29 @@ class StaffLoanListView(APIView):
         )
         loans = [open_loan] if open_loan is not None else []
         return Response(LoanSerializer(loans, many=True).data, headers=NO_STORE)
+
+
+class LoanReturnView(APIView):
+    """Librarian return of one loan; retry returns the same returned_at."""
+
+    permission_classes = [IsLibrarian]
+
+    def post(self, request, pk):
+        enforce_csrf_without_session(request)
+        try:
+            loan_id = int(pk)
+        except (TypeError, ValueError):
+            return loan_envelope("not_found", "Loan not found.", 404)
+        try:
+            with transaction.atomic():
+                loan = (
+                    Loan.objects.select_for_update()
+                    .select_related("copy")
+                    .get(pk=loan_id)
+                )
+                if loan.returned_at is None:
+                    loan.returned_at = timezone.now()
+                    loan.save(update_fields=["returned_at"])
+        except Loan.DoesNotExist:
+            return loan_envelope("not_found", "Loan not found.", 404)
+        return Response(LoanSerializer(loan).data, headers=NO_STORE)
