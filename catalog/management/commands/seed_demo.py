@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.management.base import BaseCommand
 
+from accounts.permissions import LIBRARIANS_GROUP
 from catalog.models import Book, BookCopy, normalize_inventory_code
 
 DEMO_ROWS = [
@@ -42,7 +43,7 @@ class Command(BaseCommand):
         )
 
     def _add_demo_users(self):
-        group, _ = Group.objects.get_or_create(name="Librarians")
+        group, _ = Group.objects.get_or_create(name=LIBRARIANS_GROUP)
         user_model = get_user_model()
         for username, password in (DEMO_READER, DEMO_LIBRARIAN):
             user, created = user_model.objects.get_or_create(username=username)

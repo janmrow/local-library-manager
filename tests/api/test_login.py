@@ -22,8 +22,10 @@ class TestLogin:
     def test_librarian_login_returns_is_librarian_true(self, db):
         from django.contrib.auth.models import Group
 
+        from accounts.permissions import LIBRARIANS_GROUP
+
         user = get_user_model().objects.create_user(username="lib1", password="pass12345")
-        group, _ = Group.objects.get_or_create(name="Librarians")
+        group, _ = Group.objects.get_or_create(name=LIBRARIANS_GROUP)
         user.groups.add(group)
         test_client = csrf_client()
         token = get_token(test_client)
