@@ -1,5 +1,7 @@
 from django.db import IntegrityError, transaction
 from django.db.models import Count, F, Q
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import mixins
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
@@ -96,3 +98,13 @@ class BookViewSet(
             {"id": copy.id, "inventory_code": copy.inventory_code, "book": book.pk},
             status=201,
         )
+
+
+@csrf_exempt
+def api_not_found(request, *args, **kwargs):
+    """JSON 404 for API paths that match no route (the API stays JSON).
+
+    Exempt from CSRF: the view changes no state, so API clients get the
+    JSON envelope with or without a token.
+    """
+    return JsonResponse({"code": "not_found", "detail": "Not found."}, status=404)
