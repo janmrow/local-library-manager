@@ -99,6 +99,7 @@ class TestAddCopy:
             f"/api/v1/books/{book.pk}/copies/", HTTP_X_CSRFTOKEN=token
         )
         assert get_response.status_code == 405
+        assert get_response.json()["code"] == "method_not_allowed"
         for method in ("put", "patch", "delete"):
             response = getattr(test_client, method)(
                 f"/api/v1/books/{book.pk}/copies/",
@@ -107,6 +108,7 @@ class TestAddCopy:
                 HTTP_X_CSRFTOKEN=token,
             )
             assert response.status_code == 405
+            assert response.json()["code"] == "method_not_allowed"
         assert BookCopy.objects.count() == 1
 
     def test_invalid_code_returns_400_without_write(self, db):

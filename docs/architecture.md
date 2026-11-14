@@ -25,7 +25,7 @@ Django project `config` with apps `catalog`, `circulation`, `accounts` on one or
 - Create book with first copy in one transaction; duplicate code rolls back both and returns `409 inventory_code_taken`.
 - Loan writes live in `circulation/operations.py` (lookup + insert in one atomic block with a savepoint around the insert); serializers validate only.
 - Checkout posts `{"inventory_code": "..."}`; success returns `201` with `Location: /api/v1/loans/{id}/`. Occupied copy returns `409 copy_unavailable` mapped after the atomic block rolls back.
-- Errors use `{"code": "...", "detail": "..."}` for `400/403/404/409`.
+- Errors use `{"code": "...", "detail": "..."}` for `400/403/404/405/409`.
 - Scope: reader sees own loans only; out-of-scope loan ID returns `404`.
 - `GET /api/v1/loans/` returns a bare array (no pagination): it lists only the caller's open loans, a bounded set.
 - `GET /api/v1/staff/loans/?inventory_code=`: always an array with `200` — `[]` or `[loan]` — no pagination. Full `loan` fields are specified before slice 3.

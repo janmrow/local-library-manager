@@ -1,4 +1,4 @@
-"""JSON error envelope for API errors (slice 2: 400/403/404 in envelope)."""
+"""JSON error envelope for API errors (slice 3: 400/403/404/405 in envelope)."""
 
 from rest_framework.views import exception_handler
 
@@ -28,6 +28,11 @@ def catalogue_exception_handler(exc, context):
         response.data = {"code": "invalid", "detail": _flatten_detail(response.data)}
     elif response.status_code == 403:
         response.data = {"code": "forbidden", "detail": _flatten_detail(response.data)}
+    elif response.status_code == 405:
+        response.data = {
+            "code": "method_not_allowed",
+            "detail": _flatten_detail(response.data),
+        }
     elif response.status_code == 404 and isinstance(response.data, dict):
         response.data = {
             "code": "not_found",
