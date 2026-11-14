@@ -176,3 +176,21 @@ class TestLoanReturn:
         after = test_client.get(f"/api/v1/books/{book_id}/")
         assert after.json()["available_copies"] == 2
         assert after.json()["total_copies"] == 2
+
+    @pytest.mark.parametrize(
+        "raw_pk",
+        ["1_0", "+1", " 1 ", "１２３"],
+        ids=["underscore", "plus", "padded", "fullwidth"],
+    )
+    def test_return_with_non_canonical_id_returns_json_404(self, return_setup, raw_pk):
+        test_client, token = staff_client()
+        response = test_client.post(
+            f"/api/v1/loans/{raw_pk}/return/",
+            data=json.dumps({}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+
+        assert response.status_code == 404
+        assert response["Cache-Control"] == "no-store"
+        assert response.json() == {"code": "not_found", "detail": "Loan not found."}

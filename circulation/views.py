@@ -1,5 +1,7 @@
 """Loan endpoints (slice 3: checkout, scoped reads, staff lookup, return)."""
 
+import re
+
 from django.db import transaction
 from django.http import Http404
 from django.utils import timezone
@@ -112,10 +114,12 @@ class LoanReturnView(APIView):
 
     def post(self, request, pk):
         enforce_csrf_without_session(request)
-        try:
-            loan_id = int(pk)
-        except (TypeError, ValueError):
+        # Decimal digits only: int() would also accept "+1", " 1 " or
+        # "1_0" (the latter resolves to loan 10). Leading zeros ("01")
+        # stay allowed: they resolve to the same loan.
+        if not re.fullmatch(r"[0-9]+", pk):
             return loan_envelope("not_found", "Loan not found.", 404)
+        loan_id = int(pk)
         try:
             with transaction.atomic():
                 loan = (
