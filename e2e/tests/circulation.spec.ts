@@ -62,7 +62,7 @@ test("reader checkout followed by librarian return", async ({ page, request }) =
     );
     expect(stale.status()).toBe(200);
     const [open] = await stale.json();
-    expect(open).toBeDefined();
+    expect(open, "expected the stale open loan after 409").toBeDefined();
     const cleanup = await request.post(`/api/v1/loans/${open.id}/return/`, {
       data: {},
       headers: { "X-CSRFToken": token },
@@ -115,9 +115,12 @@ test("reader checkout followed by librarian return", async ({ page, request }) =
   await page.goto("/");
   await page.getByLabel("Szukaj").fill(TITLE);
   await page.getByRole("button", { name: "Szukaj" }).click();
-  await expect(page.getByText(TITLE).first()).toBeVisible();
-  const body = await page.textContent("body");
-  const availability = body?.match(/dostępne: (\d+)\/(\d+)/);
-  expect(availability).not.toBeNull();
-  expect(availability?.[1]).toBe(availability?.[2]);
+  // Scope to the TITLE row: a body-wide first match could pass on 0/0 or on
+  // a stale row rendered before the search finishes.
+  const row = page.getByText(new RegExp(`${TITLE}.*dostępne: (\\d+)\\/(\\d+)`));
+  await expect(row).toBeVisible();
+  const match = (await row.textContent())?.match(/dostępne: (\d+)\/(\d+)/);
+  expect(match).not.toBeNull();
+  expect(match?.[1]).toBe(match?.[2]);
+  expect(Number(match?.[1])).toBeGreaterThan(0);
 });
