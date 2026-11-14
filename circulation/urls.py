@@ -1,4 +1,4 @@
-"""Circulation routes (slice 3 step 4: + librarian return)."""
+"""Circulation routes (slice 3: loans, staff lookup, return)."""
 
 from django.urls import path, re_path
 
@@ -10,14 +10,17 @@ urlpatterns = [
         LoanViewSet.as_view({"get": "list", "post": "create"}),
         name="loan-list",
     ),
-    # Same pk pattern as the books router so garbage ids render JSON 404.
+    # [^/]+ (not the books router's [^/.]+) so dotted garbage ids also
+    # reach the view and render JSON 404 instead of Django's HTML page.
+    # NOTE: future loans/<segment>/ actions must be registered above
+    # loan-detail, or [^/]+ will swallow the segment as pk.
     re_path(
-        r"^loans/(?P<pk>[^/.]+)/$",
+        r"^loans/(?P<pk>[^/]+)/$",
         LoanViewSet.as_view({"get": "retrieve"}),
         name="loan-detail",
     ),
     re_path(
-        r"^loans/(?P<pk>[^/.]+)/return/$",
+        r"^loans/(?P<pk>[^/]+)/return/$",
         LoanReturnView.as_view(),
         name="loan-return",
     ),

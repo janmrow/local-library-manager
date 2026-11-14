@@ -1,4 +1,4 @@
-"""Slice 3, step 1: reader checkout by inventory_code (201 + Location)."""
+"""Slice 3: reader checkout by inventory_code (201 + Location)."""
 
 import json
 
@@ -130,3 +130,13 @@ class TestCheckout:
             "detail": "Copy already has an open loan.",
         }
         assert Loan.objects.filter(returned_at__isnull=True).count() == 1
+
+
+@pytest.mark.django_db
+def test_non_loan_paths_carry_no_no_store_header(db, client):
+    books = client.get("/api/v1/books/")
+    session = client.get("/api/v1/session/")
+    assert books.status_code == 200
+    assert session.status_code == 200
+    assert "Cache-Control" not in books
+    assert "Cache-Control" not in session

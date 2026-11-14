@@ -8,7 +8,7 @@ class NoStoreForLoansMiddleware:
     rendered by the global exception handler (400/403/404) on loan paths.
     """
 
-    LOAN_PREFIXES = ("/api/v1/loans", "/api/v1/staff/loans")
+    LOAN_PREFIXES = ("/api/v1/loans/", "/api/v1/staff/loans/")
 
     def __init__(self, get_response):
         self.get_response = get_response

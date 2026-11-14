@@ -1,4 +1,4 @@
-"""Slice 3, step 4: idempotent librarian return (retry keeps returned_at)."""
+"""Slice 3: idempotent librarian return (retry keeps returned_at)."""
 
 import json
 
@@ -141,6 +141,19 @@ class TestLoanReturn:
 
         assert response.status_code == 404
         assert response.json()["code"] == "not_found"
+        assert response["Cache-Control"] == "no-store"
+
+    def test_return_with_dotted_id_returns_json_404(self, return_setup):
+        test_client, token = staff_client()
+        response = test_client.post(
+            "/api/v1/loans/a.b/return/",
+            data=json.dumps({}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+
+        assert response.status_code == 404
+        assert response.json() == {"code": "not_found", "detail": "Loan not found."}
         assert response["Cache-Control"] == "no-store"
 
     def test_reader_return_returns_403_without_db_write(self, return_setup):
