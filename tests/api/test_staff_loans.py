@@ -1,4 +1,4 @@
-"""Slice 3, step 3: librarian open-loan lookup by inventory_code."""
+"""Slice 3: librarian open-loan lookup by inventory_code."""
 
 import json
 
@@ -6,6 +6,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import Client
+from django.utils import timezone
 
 from accounts.permissions import LIBRARIANS_GROUP
 from catalog.models import Book, BookCopy
@@ -72,6 +73,7 @@ class TestStaffLoanLookup:
         )
 
         assert response.status_code == 200
+        assert response["Cache-Control"] == "no-store"
         assert response.json() == []
 
     def test_unknown_code_returns_empty_list(self, staff_setup):
@@ -80,51 +82,49 @@ class TestStaffLoanLookup:
         )
 
         assert response.status_code == 200
+        assert response["Cache-Control"] == "no-store"
         assert response.json() == []
 
-    def test_missing_param_returns_400(self, staff_setup):
-        response = staff_client().get("/api/v1/staff/loans/")
+    def test_copy_with_only_returned_loan_returns_empty_list(self, staff_setup):
+        returned_copy = BookCopy.objects.create(
+            book=staff_setup["busy"].book, inventory_code="LL-303"
+        )
+        Loan.objects.create(
+            copy=returned_copy,
+            reader=get_user_model().objects.get(username="reader1"),
+            returned_at=timezone.now(),
+        )
+        response = staff_client().get(
+            "/api/v1/staff/loans/", {"inventory_code": "LL-303"}
+        )
+
+        assert response.status_code == 200
+        assert response["Cache-Control"] == "no-store"
+        assert response.json() == []
+
+    @pytest.mark.parametrize(
+        "params",
+        [
+            {},
+            {"inventory_code": ""},
+            {"inventory_code": "   "},
+            {"inventory_code": "bad code!"},
+            {"inventory_code": "A" * 25},
+        ],
+        ids=["missing", "empty", "whitespace", "invalid-chars", "overlong"],
+    )
+    def test_bad_param_returns_400(self, staff_setup, params):
+        response = staff_client().get("/api/v1/staff/loans/", params)
 
         assert response.status_code == 400
         assert response["Cache-Control"] == "no-store"
-        assert response.json()["code"] == "invalid"
-
-    def test_empty_param_returns_400(self, staff_setup):
-        response = staff_client().get(
-            "/api/v1/staff/loans/", {"inventory_code": ""}
-        )
-
-        assert response.status_code == 400
-        assert response.json()["code"] == "invalid"
-
-    def test_whitespace_param_returns_400(self, staff_setup):
-        response = staff_client().get(
-            "/api/v1/staff/loans/", {"inventory_code": "   "}
-        )
-
-        assert response.status_code == 400
         assert response.json()["code"] == "invalid"
 
     def test_repeated_param_returns_400(self, staff_setup):
         response = staff_client().get("/api/v1/staff/loans/?inventory_code=LL-301&inventory_code=LL-302")
 
         assert response.status_code == 400
-        assert response.json()["code"] == "invalid"
-
-    def test_invalid_code_returns_400(self, staff_setup):
-        response = staff_client().get(
-            "/api/v1/staff/loans/", {"inventory_code": "bad code!"}
-        )
-
-        assert response.status_code == 400
-        assert response.json()["code"] == "invalid"
-
-    def test_overlong_code_returns_400(self, staff_setup):
-        response = staff_client().get(
-            "/api/v1/staff/loans/", {"inventory_code": "A" * 25}
-        )
-
-        assert response.status_code == 400
+        assert response["Cache-Control"] == "no-store"
         assert response.json()["code"] == "invalid"
 
     def test_reader_returns_403(self, staff_setup):
