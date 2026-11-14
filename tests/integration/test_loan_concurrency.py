@@ -1,4 +1,4 @@
-"""Slice 3, step 5: concurrency on real PostgreSQL (barrier sync, no sleeps)."""
+"""Slice 3: concurrency on real PostgreSQL (barrier sync, no sleeps)."""
 
 import json
 import threading

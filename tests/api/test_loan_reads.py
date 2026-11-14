@@ -1,4 +1,4 @@
-"""Slice 3, step 2: loan reads scoped to the caller (foreign id -> 404)."""
+"""Slice 3: loan reads scoped to the caller (foreign id -> 404)."""
 
 import json
 
@@ -100,6 +100,14 @@ class TestLoanReads:
     def test_detail_of_non_integer_pk_returns_json_404(self, loan_setup):
         test_client = authed_client("reader1")
         response = test_client.get("/api/v1/loans/abc/")
+
+        assert response.status_code == 404
+        assert response.json() == {"code": "not_found", "detail": "Loan not found."}
+        assert response["Cache-Control"] == "no-store"
+
+    def test_detail_of_dotted_pk_returns_json_404(self, loan_setup):
+        test_client = authed_client("reader1")
+        response = test_client.get("/api/v1/loans/a.b/")
 
         assert response.status_code == 404
         assert response.json() == {"code": "not_found", "detail": "Loan not found."}
