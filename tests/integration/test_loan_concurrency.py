@@ -66,14 +66,22 @@ class TestLoanConcurrency:
             test_client = Client(enforce_csrf_checks=True)
             token = login(test_client, f"reader{index + 1}", "pass12345")
             barrier.wait(timeout=15)
-            outcomes[index] = test_client.post(
+            response = test_client.post(
                 "/api/v1/loans/",
                 data=json.dumps({"inventory_code": "LL-501"}),
                 content_type="application/json",
                 HTTP_X_CSRFTOKEN=token,
-            ).status_code
+            )
+            outcomes[index] = (response.status_code, response.json())
 
-        assert sorted(run_parallel(2, checkout).values()) == [201, 409]
+        results = run_parallel(2, checkout)
+        bodies = {status: body for status, body in results.values()}
+        assert sorted(bodies) == [201, 409]
+        assert "code" not in bodies[201]
+        assert bodies[409] == {
+            "code": "copy_unavailable",
+            "detail": "Copy already has an open loan.",
+        }
         assert (
             Loan.objects.filter(copy=copy, returned_at__isnull=True).count() == 1
         )
