@@ -7,7 +7,8 @@ import traceback
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.db import connection
+from django.db import connection, transaction
+from django.utils import timezone
 from django.test import Client
 
 from accounts.permissions import LIBRARIANS_GROUP
@@ -118,3 +119,47 @@ class TestLoanConcurrency:
         assert len(stamps) == 1
         loan.refresh_from_db()
         assert loan.returned_at is not None
+
+    # End-state only: asserts the checkout succeeds and leaves exactly one
+    # open loan, not that the POST actually blocked on the row lock.
+    def test_checkout_succeeds_after_concurrent_return(self, db):
+        reader = get_user_model().objects.create_user(
+            username="reader1", password="pass12345"
+        )
+        book = Book.objects.create(title="Solaris", author="Stanisław Lem")
+        copy = BookCopy.objects.create(book=book, inventory_code="LL-503")
+        loan = Loan.objects.create(copy=copy, reader=reader)
+        held = {}
+
+        # ORM (not HTTP): the view commits per request, so only direct ORM
+        # access can hold the row lock open across the barrier.
+        def returner(index, barrier, outcomes):
+            with transaction.atomic():
+                locked = Loan.objects.select_for_update().get(pk=loan.pk)
+                held["saw_open"] = locked.returned_at is None
+                barrier.wait(timeout=15)
+                locked.returned_at = timezone.now()
+                locked.save(update_fields=["returned_at"])
+
+        def borrower(index, barrier, outcomes):
+            test_client = Client(enforce_csrf_checks=True)
+            token = login(test_client, "reader1", "pass12345")
+            barrier.wait(timeout=15)
+            response = test_client.post(
+                "/api/v1/loans/",
+                data=json.dumps({"inventory_code": "LL-503"}),
+                content_type="application/json",
+                HTTP_X_CSRFTOKEN=token,
+            )
+            outcomes[index] = (response.status_code, response.json())
+
+        def worker(index, barrier, outcomes):
+            (returner if index == 0 else borrower)(index, barrier, outcomes)
+
+        outcomes = run_parallel(2, worker)
+        assert held["saw_open"] is True
+        assert outcomes[1][0] == 201
+        assert "code" not in outcomes[1][1]
+        open_loans = Loan.objects.filter(returned_at__isnull=True)
+        assert open_loans.count() == 1
+        assert open_loans.get().pk != loan.pk
