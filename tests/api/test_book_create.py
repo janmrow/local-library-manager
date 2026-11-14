@@ -178,5 +178,6 @@ class TestBookCreate:
                 HTTP_X_CSRFTOKEN=token,
             )
             assert response.status_code == 405
+            assert response.json()["code"] == "method_not_allowed"
         assert Book.objects.get(pk=book.pk).title == "T"
         assert BookCopy.objects.count() == 1

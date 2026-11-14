@@ -5,7 +5,7 @@ class NoStoreForLoansMiddleware:
     """Attach Cache-Control: no-store to loan responses, including errors.
 
     Views set the header on their direct responses; this covers errors
-    rendered by the global exception handler (400/403/404) on loan paths.
+    rendered by the global exception handler (400/403/404/405) on loan paths.
     """
 
     LOAN_PREFIXES = ("/api/v1/loans/", "/api/v1/staff/loans/")

@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from catalog.models import Book, BookCopy
 from circulation.models import Loan
-from tests.api.helpers import csrf_client, login
+from tests.api.helpers import csrf_client, login, make_librarian
 
 
 @pytest.fixture
@@ -148,3 +148,27 @@ class TestLoanReads:
 
         assert response.status_code == 200
         assert [loan["id"] for loan in response.json()] == [second.id, first.id]
+
+    def test_unsupported_methods_return_405_envelope(self, loan_setup):
+        test_client = csrf_client()
+        token = login(test_client, "reader1", "pass12345")
+        for method, url in (
+            ("put", "/api/v1/loans/"),
+            ("delete", f"/api/v1/loans/{loan_setup['loan1'].id}/"),
+        ):
+            response = getattr(test_client, method)(
+                url, HTTP_X_CSRFTOKEN=token
+            )
+
+            assert response.status_code == 405
+            assert response["Cache-Control"] == "no-store"
+            assert response.json()["code"] == "method_not_allowed"
+
+        make_librarian()
+        staff_client = csrf_client()
+        login(staff_client, "lib1", "pass12345")
+        response = staff_client.get(f"/api/v1/loans/{loan_setup['loan1'].id}/return/")
+
+        assert response.status_code == 405
+        assert response["Cache-Control"] == "no-store"
+        assert response.json()["code"] == "method_not_allowed"
