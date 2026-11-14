@@ -1,53 +1,24 @@
-import { APIRequestContext, expect, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+
+import {
+  LIBRARIAN,
+  READER,
+  SHARED_BOOK,
+  csrfToken,
+  ensureBookId,
+  loginAs,
+} from "./helpers";
 
 // Shared with librarian.spec.ts: this flow creates no books of its own, so the
 // pinned catalogue counts never drift. Runs serially (workers: 1) with the
 // other files against the shared library_e2e database.
-const TITLE = "E2E Librarian Book";
-const AUTHOR = "E2E Author";
-const BOOK_CODE = "E2E-LIB-01";
-const READER = { username: "reader", password: "reader12345" };
-const LIBRARIAN = { username: "librarian", password: "librarian12345" };
-
-async function csrfToken(request: APIRequestContext): Promise<string> {
-  const state = await request.storageState();
-  const cookie = state.cookies.find((c) => c.name === "csrftoken");
-  if (!cookie) throw new Error("missing csrftoken cookie");
-  return cookie.value;
-}
-
-async function loginAs(
-  request: APIRequestContext,
-  account: { username: string; password: string },
-): Promise<string> {
-  await request.get("/api/v1/session/");
-  const anonymousToken = await csrfToken(request);
-  const login = await request.post("/api/v1/session/", {
-    data: account,
-    headers: { "X-CSRFToken": anonymousToken },
-  });
-  expect(login.status()).toBe(200);
-  return csrfToken(request);
-}
-
-async function ensureBook(request: APIRequestContext, token: string) {
-  const create = await request.post("/api/v1/books/", {
-    data: { title: TITLE, author: AUTHOR, inventory_code: BOOK_CODE },
-    headers: { "X-CSRFToken": token },
-  });
-  if (create.status() === 201) return;
-  expect(create.status()).toBe(409);
-  const found = await request.get(`/api/v1/books/?q=${encodeURIComponent(TITLE)}`);
-  expect(found.status()).toBe(200);
-  const existing = (await found.json()).results.find(
-    (b: { title: string }) => b.title === TITLE,
-  );
-  expect(existing).toBeDefined();
-}
+const TITLE = SHARED_BOOK.title;
+const AUTHOR = SHARED_BOOK.author;
+const BOOK_CODE = SHARED_BOOK.bookCode;
 
 test("reader checkout followed by librarian return", async ({ page, request }) => {
   let token = await loginAs(request, LIBRARIAN);
-  await ensureBook(request, token);
+  await ensureBookId(request, token, TITLE, AUTHOR, BOOK_CODE);
 
   token = await loginAs(request, READER);
   let checkout = await request.post("/api/v1/loans/", {

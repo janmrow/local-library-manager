@@ -1,17 +1,10 @@
-import { APIRequestContext, expect, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-const LIBRARIAN = { username: "librarian", password: "librarian12345" };
-const READER = { username: "reader", password: "reader12345" };
-const TITLE = "E2E Librarian Book";
-const BOOK_CODE = "E2E-LIB-01";
-const COPY_CODE = "E2E-LIB-02";
+import { LIBRARIAN, READER, SHARED_BOOK, csrfToken, ensureBookId } from "./helpers";
 
-async function csrfToken(request: APIRequestContext): Promise<string> {
-  const state = await request.storageState();
-  const cookie = state.cookies.find((c) => c.name === "csrftoken");
-  if (!cookie) throw new Error("missing csrftoken cookie");
-  return cookie.value;
-}
+const TITLE = SHARED_BOOK.title;
+const BOOK_CODE = SHARED_BOOK.bookCode;
+const COPY_CODE = SHARED_BOOK.copyCode;
 
 test("librarian catalogue changes via API", async ({ page, request }) => {
   await request.get("/api/v1/session/");
@@ -30,29 +23,34 @@ test("librarian catalogue changes via API", async ({ page, request }) => {
   const librarianToken = await csrfToken(request);
   expect(librarianToken).not.toBe(anonymousToken);
 
-  const headers = { "X-CSRFToken": librarianToken };
-  let bookId: number;
-  const create = await request.post("/api/v1/books/", {
-    data: { title: TITLE, author: "E2E Author", inventory_code: BOOK_CODE },
-    headers,
-  });
-  if (create.status() === 201) {
-    bookId = (await create.json()).id;
-  } else {
-    expect(create.status()).toBe(409);
-    const found = await request.get(`/api/v1/books/?q=${encodeURIComponent(TITLE)}`);
-    expect(found.status()).toBe(200);
-    const results = (await found.json()).results;
-    const existing = results.find((b: { title: string }) => b.title === TITLE);
-    expect(existing).toBeDefined();
-    bookId = existing.id;
-  }
+  const bookId = await ensureBookId(request, librarianToken, TITLE, "E2E Author", BOOK_CODE);
 
   const copy = await request.post(`/api/v1/books/${bookId}/copies/`, {
     data: { inventory_code: COPY_CODE },
     headers: { "X-CSRFToken": await csrfToken(request) },
   });
   expect([201, 409]).toContain(copy.status());
+
+  // Heal stale open loans left by an aborted circulation run; without this
+  // the availability assertion below would see 1/2 on a dirty database.
+  // Loud on purpose: healing must stay an exception, not routine.
+  const healed: number[] = [];
+  for (const code of [BOOK_CODE, COPY_CODE]) {
+    const stale = await request.get(
+      `/api/v1/staff/loans/?inventory_code=${code}`,
+    );
+    expect(stale.status()).toBe(200);
+    for (const open of await stale.json()) {
+      const cleanup = await request.post(`/api/v1/loans/${open.id}/return/`, {
+        data: {},
+        headers: { "X-CSRFToken": await csrfToken(request) },
+      });
+      expect(cleanup.status()).toBe(200);
+      healed.push(open.id);
+    }
+  }
+  if (healed.length > 0) console.log(`healed stale loans: ${healed}`);
+  expect(healed.length).toBeLessThanOrEqual(1);
 
   const detail = await request.get(`/api/v1/books/${bookId}/`);
   expect(await detail.json()).toMatchObject({
