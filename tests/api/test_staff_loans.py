@@ -1,40 +1,17 @@
 """Slice 3: librarian open-loan lookup by inventory_code."""
 
-import json
-
 import pytest
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Group
-from django.test import Client
 from django.utils import timezone
 
-from accounts.permissions import LIBRARIANS_GROUP
 from catalog.models import Book, BookCopy
 from circulation.models import Loan
-
-
-def csrf_client():
-    return Client(enforce_csrf_checks=True)
-
-
-def login(test_client, username, password):
-    token = test_client.get("/api/v1/session/").cookies["csrftoken"].value
-    response = test_client.post(
-        "/api/v1/session/",
-        data=json.dumps({"username": username, "password": password}),
-        content_type="application/json",
-        HTTP_X_CSRFTOKEN=token,
-    )
-    assert response.status_code == 200
-    return response.cookies["csrftoken"].value
+from tests.api.helpers import csrf_client, login, make_librarian
 
 
 @pytest.fixture
 def staff_setup(db):
-    librarian = get_user_model().objects.create_user(
-        username="lib1", password="pass12345"
-    )
-    librarian.groups.add(Group.objects.get_or_create(name=LIBRARIANS_GROUP)[0])
+    make_librarian()
     reader = get_user_model().objects.create_user(
         username="reader1", password="pass12345"
     )

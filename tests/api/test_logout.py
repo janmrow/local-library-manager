@@ -1,26 +1,9 @@
 """Slice 2, step 4: sign-out clears the session, unauth DELETE is 403."""
 
-import json
-
 import pytest
 from django.contrib.auth import get_user_model
-from django.test import Client
 
-
-def csrf_client():
-    return Client(enforce_csrf_checks=True)
-
-
-def login(test_client, username="reader1", password="pass12345"):
-    token = test_client.get("/api/v1/session/").cookies["csrftoken"].value
-    response = test_client.post(
-        "/api/v1/session/",
-        data=json.dumps({"username": username, "password": password}),
-        content_type="application/json",
-        HTTP_X_CSRFTOKEN=token,
-    )
-    assert response.status_code == 200
-    return response.cookies["csrftoken"].value
+from tests.api.helpers import csrf_client, login
 
 
 @pytest.mark.django_db

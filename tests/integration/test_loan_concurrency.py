@@ -14,18 +14,7 @@ from django.test import Client
 from accounts.permissions import LIBRARIANS_GROUP
 from catalog.models import Book, BookCopy
 from circulation.models import Loan
-
-
-def login(test_client, username, password):
-    token = test_client.get("/api/v1/session/").cookies["csrftoken"].value
-    response = test_client.post(
-        "/api/v1/session/",
-        data=json.dumps({"username": username, "password": password}),
-        content_type="application/json",
-        HTTP_X_CSRFTOKEN=token,
-    )
-    assert response.status_code == 200
-    return response.cookies["csrftoken"].value
+from tests.api.helpers import login
 
 
 def run_parallel(count, worker):

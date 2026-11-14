@@ -4,19 +4,9 @@ import json
 
 import pytest
 from django.contrib.auth import get_user_model
-from django.test import Client
 
 from accounts.permissions import LIBRARIANS_GROUP
-
-
-def csrf_client():
-    return Client(enforce_csrf_checks=True)
-
-
-def get_token(test_client):
-    response = test_client.get("/api/v1/session/")
-    assert response.status_code == 200
-    return response.cookies["csrftoken"].value
+from tests.api.helpers import csrf_client, get_token
 
 
 @pytest.mark.django_db
