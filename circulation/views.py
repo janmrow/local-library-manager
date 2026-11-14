@@ -2,9 +2,7 @@
 
 import re
 
-from django.db import transaction
 from django.http import Http404
-from django.utils import timezone
 from rest_framework import mixins, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -14,7 +12,12 @@ from accounts.permissions import IsLibrarian, IsSignedIn
 from accounts.views import enforce_csrf_without_session
 from catalog.serializers import normalize_code
 from circulation.models import Loan
-from circulation.operations import CopyNotFound, CopyUnavailable, checkout_loan
+from circulation.operations import (
+    CopyNotFound,
+    CopyUnavailable,
+    checkout_loan,
+    return_loan,
+)
 from circulation.serializers import CheckoutSerializer, LoanSerializer
 
 NO_STORE = {"Cache-Control": "no-store"}
@@ -119,17 +122,7 @@ class LoanReturnView(APIView):
         # stay allowed: they resolve to the same loan.
         if not re.fullmatch(r"[0-9]+", pk):
             return loan_envelope("not_found", "Loan not found.", 404)
-        loan_id = int(pk)
-        try:
-            with transaction.atomic():
-                loan = (
-                    Loan.objects.select_for_update()
-                    .select_related("copy")
-                    .get(pk=loan_id)
-                )
-                if loan.returned_at is None:
-                    loan.returned_at = timezone.now()
-                    loan.save(update_fields=["returned_at"])
-        except Loan.DoesNotExist:
+        loan = return_loan(loan_id=int(pk))
+        if loan is None:
             return loan_envelope("not_found", "Loan not found.", 404)
         return Response(LoanSerializer(loan).data, headers=NO_STORE)

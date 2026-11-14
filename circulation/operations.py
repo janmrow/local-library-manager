@@ -1,6 +1,7 @@
 """Loan write operations (slice 3: transactions live here, not in save())."""
 
 from django.db import IntegrityError, transaction
+from django.utils import timezone
 
 from catalog.models import BookCopy
 from circulation.models import Loan
@@ -54,3 +55,24 @@ def checkout_loan(*, inventory_code: str, reader) -> Loan:
             if not BookCopy.objects.filter(pk=copy.pk).exists():
                 raise CopyNotFound from exc
             raise
+
+
+def return_loan(*, loan_id: int) -> Loan | None:
+    """Record the return once; a retry returns the unchanged row.
+
+    Returns None when the loan does not exist. The row lock serializes
+    parallel returns on the same loan.
+    """
+    with transaction.atomic():
+        try:
+            loan = (
+                Loan.objects.select_for_update()
+                .select_related("copy")
+                .get(pk=loan_id)
+            )
+        except Loan.DoesNotExist:
+            return None
+        if loan.returned_at is None:
+            loan.returned_at = timezone.now()
+            loan.save(update_fields=["returned_at"])
+        return loan

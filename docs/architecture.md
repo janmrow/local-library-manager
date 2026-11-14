@@ -23,7 +23,7 @@ Django project `config` with apps `catalog`, `circulation`, `accounts` on one or
 
 - Code normalize: trim → validate 3–24 ASCII `[A-Za-z0-9-]` on the trimmed input, before uppercase → uppercase, for both save and lookup with one shared function.
 - Create book with first copy in one transaction; duplicate code rolls back both and returns `409 inventory_code_taken`.
-- Loan writes live in `circulation/operations.py` (lookup + insert in one atomic block with a savepoint around the insert); serializers validate only.
+- Loan writes live in `circulation/operations.py` (checkout: lookup + insert with a savepoint; return: select-for-update + conditional update); serializers validate only.
 - Checkout posts `{"inventory_code": "..."}`; success returns `201` with `Location: /api/v1/loans/{id}/`. Occupied copy returns `409 copy_unavailable` mapped after the atomic block rolls back.
 - Errors use `{"code": "...", "detail": "..."}` for `400/403/404/405/409`.
 - Scope: reader sees own loans only; out-of-scope loan ID returns `404`.
