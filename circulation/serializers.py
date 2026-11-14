@@ -1,6 +1,5 @@
-"""Loan serializers (slice 3: checkout keeps its write in an atomic block)."""
+"""Loan serializers (slice 3: validation contract only; writes live in operations)."""
 
-from django.db import transaction
 from rest_framework import serializers
 
 from catalog.serializers import normalize_code
@@ -21,10 +20,3 @@ class CheckoutSerializer(serializers.Serializer):
 
     def validate_inventory_code(self, value):
         return normalize_code(value)
-
-    def create(self, validated_data):
-        with transaction.atomic():
-            return Loan.objects.create(
-                copy=validated_data["copy"],
-                reader=validated_data["reader"],
-            )

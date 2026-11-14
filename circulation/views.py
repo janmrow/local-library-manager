@@ -1,6 +1,6 @@
-"""Loan endpoints (slice 3: checkout + scoped reads + staff lookup + return)."""
+"""Loan endpoints (slice 3: checkout, scoped reads, staff lookup, return)."""
 
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from django.http import Http404
 from django.utils import timezone
 from rest_framework import mixins, serializers
@@ -10,13 +10,12 @@ from rest_framework.viewsets import GenericViewSet
 
 from accounts.permissions import IsLibrarian, IsSignedIn
 from accounts.views import enforce_csrf_without_session
-from catalog.models import BookCopy
 from catalog.serializers import normalize_code
 from circulation.models import Loan
+from circulation.operations import CopyNotFound, CopyUnavailable, checkout_loan
 from circulation.serializers import CheckoutSerializer, LoanSerializer
 
 NO_STORE = {"Cache-Control": "no-store"}
-OPEN_LOAN_CONSTRAINT = "unique_open_loan_per_copy"
 
 
 def loan_envelope(code: str, detail: str, status: int) -> Response:
@@ -50,6 +49,8 @@ class LoanViewSet(
         )
 
     def retrieve(self, request, *args, **kwargs):
+        # Explicit catch (not the global handler) keeps foreign / missing /
+        # garbage ids byte-identical, so no existence oracle leaks scope.
         try:
             loan = self.get_object()
         except Http404:
@@ -62,20 +63,13 @@ class LoanViewSet(
         input_serializer.is_valid(raise_exception=True)
         code = input_serializer.validated_data["inventory_code"]
         try:
-            copy = BookCopy.objects.get(inventory_code=code)
-        except BookCopy.DoesNotExist:
+            loan = checkout_loan(inventory_code=code, reader=request.user)
+        except CopyNotFound:
             return loan_envelope("not_found", "Unknown inventory_code.", 404)
-        try:
-            loan = input_serializer.save(copy=copy, reader=request.user)
-        except IntegrityError as exc:
-            diag = getattr(getattr(exc, "__cause__", None), "diag", None)
-            if getattr(diag, "constraint_name", None) == OPEN_LOAN_CONSTRAINT:
-                return loan_envelope(
-                    "copy_unavailable", "Copy already has an open loan.", 409
-                )
-            if not BookCopy.objects.filter(pk=copy.pk).exists():
-                return loan_envelope("not_found", "Unknown inventory_code.", 404)
-            raise
+        except CopyUnavailable:
+            return loan_envelope(
+                "copy_unavailable", "Copy already has an open loan.", 409
+            )
         return Response(
             LoanSerializer(loan).data,
             status=201,
