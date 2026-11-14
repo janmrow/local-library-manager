@@ -184,3 +184,16 @@ class TestLoanReturn:
 
         assert response.status_code == 403
         assert Loan.objects.get(pk=return_setup["open"].id).returned_at is None
+
+    def test_return_restores_available_copies(self, return_setup):
+        test_client, token = staff_client()
+        book_id = BookCopy.objects.get(inventory_code="LL-401").book_id
+        before = test_client.get(f"/api/v1/books/{book_id}/")
+        assert before.json()["available_copies"] == 1
+
+        response = staff_return(test_client, token, return_setup["open"].id)
+        assert response.status_code == 200
+
+        after = test_client.get(f"/api/v1/books/{book_id}/")
+        assert after.json()["available_copies"] == 2
+        assert after.json()["total_copies"] == 2

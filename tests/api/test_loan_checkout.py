@@ -101,6 +101,16 @@ class TestCheckout:
         assert response.json()["code"] == "forbidden"
         assert Loan.objects.count() == 0
 
+    def test_overlong_code_returns_400_without_db_write(self, checkout_setup):
+        test_client = csrf_client()
+        token = login(test_client, "reader1", "pass12345")
+        response = checkout(test_client, token, {"inventory_code": "A" * 25})
+
+        assert response.status_code == 400
+        assert response.json()["code"] == "invalid"
+        assert response["Cache-Control"] == "no-store"
+        assert Loan.objects.count() == 0
+
     def test_reader_without_csrf_returns_403_without_db_write(self, checkout_setup):
         test_client = csrf_client()
         login(test_client, "reader1", "pass12345")
@@ -140,3 +150,4 @@ def test_non_loan_paths_carry_no_no_store_header(db, client):
     assert session.status_code == 200
     assert "Cache-Control" not in books
     assert "Cache-Control" not in session
+

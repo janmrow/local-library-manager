@@ -36,12 +36,16 @@ def loan_setup(db):
     open1 = BookCopy.objects.create(book=book, inventory_code="LL-201")
     open2 = BookCopy.objects.create(book=book, inventory_code="LL-202")
     old = BookCopy.objects.create(book=book, inventory_code="LL-203")
+    old2 = BookCopy.objects.create(book=book, inventory_code="LL-204")
     loan1 = Loan.objects.create(copy=open1, reader=reader1)
     loan2 = Loan.objects.create(copy=open2, reader=reader2)
     returned = Loan.objects.create(
         copy=old, reader=reader1, returned_at=timezone.now()
     )
-    return {"loan1": loan1, "loan2": loan2, "returned": returned}
+    returned2 = Loan.objects.create(
+        copy=old2, reader=reader2, returned_at=timezone.now()
+    )
+    return {"loan1": loan1, "loan2": loan2, "returned": returned, "returned2": returned2}
 
 
 def authed_client(username):
@@ -89,6 +93,14 @@ class TestLoanReads:
         assert response["Cache-Control"] == "no-store"
         assert response.json() == {"code": "not_found", "detail": "Loan not found."}
 
+    def test_detail_of_other_readers_returned_loan_returns_404(self, loan_setup):
+        test_client = authed_client("reader1")
+        response = test_client.get(f"/api/v1/loans/{loan_setup['returned2'].id}/")
+
+        assert response.status_code == 404
+        assert response["Cache-Control"] == "no-store"
+        assert response.json() == {"code": "not_found", "detail": "Loan not found."}
+
     def test_detail_of_missing_loan_returns_404(self, loan_setup):
         test_client = authed_client("reader1")
         response = test_client.get("/api/v1/loans/999999/")
@@ -118,6 +130,7 @@ class TestLoanReads:
         response = test_client.get("/api/v1/loans/")
 
         assert response.status_code == 403
+        assert response["Cache-Control"] == "no-store"
         assert response.json()["code"] == "forbidden"
 
     def test_anonymous_detail_returns_403(self, loan_setup):
@@ -125,9 +138,12 @@ class TestLoanReads:
         response = test_client.get(f"/api/v1/loans/{loan_setup['loan1'].id}/")
 
         assert response.status_code == 403
+        assert response["Cache-Control"] == "no-store"
         assert response.json()["code"] == "forbidden"
 
     def test_list_orders_open_loans_by_borrowed_then_id(self, db):
+        from datetime import timedelta
+
         reader = get_user_model().objects.create_user(
             username="reader1", password="pass12345"
         )
@@ -136,9 +152,17 @@ class TestLoanReads:
         second_copy = BookCopy.objects.create(book=book, inventory_code="LL-202")
         first = Loan.objects.create(copy=first_copy, reader=reader)
         second = Loan.objects.create(copy=second_copy, reader=reader)
+        # Reverse borrowed_at vs id order: without order_by the DB would
+        # return insertion order [first, second]; the contract is borrowed,id.
+        Loan.objects.filter(pk=first.pk).update(
+            borrowed_at=timezone.now() + timedelta(days=1)
+        )
+        Loan.objects.filter(pk=second.pk).update(
+            borrowed_at=timezone.now() - timedelta(days=1)
+        )
 
         test_client = authed_client("reader1")
         response = test_client.get("/api/v1/loans/")
 
         assert response.status_code == 200
-        assert [loan["id"] for loan in response.json()] == [first.id, second.id]
+        assert [loan["id"] for loan in response.json()] == [second.id, first.id]
