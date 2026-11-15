@@ -24,11 +24,11 @@
       </div>
     </footer>
     <script type="module">
-      import { apiGet } from "{% static 'js/api.js' %}";
+      import { fetchSession } from "{% static 'js/api.js' %}";
       const node = document.getElementById("session-state");
       (async () => {
         try {
-          const state = await apiGet("/api/v1/session/");
+          const state = await fetchSession();
           node.textContent = state.authenticated
             ? `${state.username}${state.is_librarian ? " (bibliotekarz)" : ""}`
             : "Gość";
