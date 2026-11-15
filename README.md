@@ -1,6 +1,6 @@
 # Local Library Manager
 
-> Planning draft. The routes and commands below describe the intended first release. The route table is the release target — do not implement ahead: per-slice scope is in `docs/roadmap.md`. Slice 1 builds only `GET books/` rows. Full table accuracy is verified in slice 4.
+> First release. The route table below is shipped; per-slice history is in `docs/roadmap.md`.
 
 Local Library Manager is a small circulation app for a single library branch. Visitors can browse the catalogue. Readers can create an account, sign in and check out the copy they have in hand by entering its inventory code. A librarian can add books and copies and record returns at the desk.
 
@@ -25,11 +25,11 @@ uv run --locked --env-file .env python manage.py seed_demo
 uv run --locked --env-file .env python manage.py runserver 127.0.0.1:8000
 ```
 
-Open <http://127.0.0.1:8000/>. The demo dataset currently holds two books with one available copy each; reader and librarian accounts, checked-out copies, and further flows arrive in later slices (see `docs/roadmap.md`). The seed command can be rerun on a demo database. Use `.env.example` to see the local settings and keep your own `.env` outside version control.
+Open <http://127.0.0.1:8000/>. The demo dataset holds two books with one available copy each, plus synthetic `reader` and `librarian` accounts (passwords are defined in `seed_demo.py`). The seed command can be rerun on a demo database. Use `.env.example` to see the local settings and keep your own `.env` outside version control.
 
 ## API
 
-The generated OpenAPI document is at `/api/schema/`. The application uses Django session cookies. Read `/api/v1/session/` to obtain the CSRF cookie. Include the current token in `X-CSRFToken` on requests that write data, including account creation and sign-in. Read the cookie again after sign-in rotates the token.
+The generated OpenAPI document is at `/api/schema/` (JSON via `?format=json`, YAML by default). A client-supplied `X-Request-ID` is echoed only when it matches `[A-Za-z0-9-]{1,64}`; anything else is replaced with a generated UUID. The application uses Django session cookies. Read `/api/v1/session/` to obtain the CSRF cookie. Include the current token in `X-CSRFToken` on requests that write data, including account creation and sign-in. Read the cookie again after sign-in rotates the token.
 
 | Method and path | Who | Result |
 | --- | --- | --- |
@@ -79,7 +79,7 @@ npx playwright test
 
 `--with-deps` needs root for system packages; without sudo run `npx playwright install chromium` instead.
 
-Playwright starts its own app instance on port 8001 against `library_e2e`. The suite will grow to three workflows — public browsing, librarian catalogue changes, and reader checkout followed by a librarian return; slice 1 covers public browsing, search, and pagination. CI (slice 4) will run the backend and browser checks in independent PostgreSQL environments and retain the Playwright trace on failure. Traces may contain cookies and network snapshots, so use synthetic accounts only and check trace content before publishing; keep retention short.
+Playwright starts its own app instance on port 8001 against `library_e2e`. The suite covers three workflows — public browsing (with search and pagination), librarian catalogue changes, and reader checkout followed by a librarian return. CI (`.github/workflows/ci.yml`) runs the backend (`pytest` plus `makemigrations --check`) and browser (`npx playwright test`) checks in independent PostgreSQL 17 environments and uploads the Playwright trace on failure (kept 7 days). Traces may contain cookies and network snapshots, so use synthetic accounts only and check trace content before publishing; keep retention short.
 
 ## Diagnose a failed checkout
 
