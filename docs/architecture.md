@@ -41,7 +41,7 @@ Browser `POST /api/v1/loans/` with session + CSRF → API checks access and code
 
 ## Observability
 
-`X-Request-ID` middleware generates or propagates the ID, returns it on the response, and includes method, path, status, duration, and request ID in the server log. A client-supplied ID is echoed only when it matches `[A-Za-z0-9-]{1,64}`; anything else is replaced with a generated UUID and never rejects the request. `config/settings.py` uses `ENGINE=django.db.backends.postgresql` from `DB_*` in `.env.example`; `pytest-django` uses `DJANGO_SETTINGS_MODULE=config.settings`.
+`X-Request-ID` middleware generates or propagates the ID, returns it on the response, and includes method, path, status, duration, and request ID in the server log. A client-supplied ID is echoed only when it matches `[A-Za-z0-9-]{1,64}`; anything else is replaced with a generated UUID and never rejects the request. Handled crashes (500) still carry the header; the log line always carries `rid=`. `config/settings.py` uses `ENGINE=django.db.backends.postgresql` from `DB_*` in `.env.example`; `pytest-django` uses `DJANGO_SETTINGS_MODULE=config.settings`.
 
 ## Frontend
 
