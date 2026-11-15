@@ -27,6 +27,7 @@ INSTALLED_APPS = [
 AUTH_USER_MODEL = "accounts.User"
 
 MIDDLEWARE = [
+    "config.middleware.RequestIdMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -73,5 +74,14 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "loggers": {
+        # Request lines stay visible in e2e/server logs while the root
+        # stays WARNING there; pytest captures console output per test.
+        "config.middleware": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
     "root": {"handlers": ["console"], "level": "WARNING" if APP_ENV in ("e2e", "test") else "INFO"},
 }
