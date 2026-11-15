@@ -15,9 +15,9 @@ Django project `config` with apps `catalog`, `circulation`, `accounts` on one or
 
 ## Read API
 
-- `GET /api/v1/books/` uses `PageNumberPagination`, `page_size=20`, `AllowAny`, `order_by("title","id")`, router in `config/urls.py`. Envelope is `{"count","next","previous","results":[{"id","title","author","available_copies","total_copies"}]}`.
+- `GET /api/v1/books/` uses `PageNumberPagination`, `page_size=20`, `AllowAny`, `order_by("title","id")`, router in `config/urls.py`. Envelope is `{"count","next","previous","results":[{"id","title","author","available_copies","total_copies","available_codes"}]}` where `available_codes` lists the inventory codes of copies with no open loan, ordered by code.
 - `q` matches title or author with `icontains`, ordered by title; empty or missing `q` returns all.
-- `GET /api/v1/books/{id}/` returns the same object, no `copies[]`; unknown id returns `404 {"code":"not_found","detail":"..."}`.
+- `GET /api/v1/books/{id}/` returns the same object with `available_codes`; unknown id returns `404 {"code":"not_found","detail":"..."}`.
 
 ## Write API
 
