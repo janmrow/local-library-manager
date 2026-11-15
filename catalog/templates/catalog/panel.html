@@ -77,8 +77,12 @@
       }
     }
 
-    document.getElementById("book-form").addEventListener("submit", async (event) => {
+    const bookForm = document.getElementById("book-form");
+    const bookButton = bookForm.querySelector('button[type="submit"]');
+    bookForm.addEventListener("submit", async (event) => {
       event.preventDefault();
+      if (bookButton.disabled) return;
+      bookButton.disabled = true;
       bookMessage.textContent = "";
       const title = document.getElementById("book-title").value.trim();
       const author = document.getElementById("book-author").value.trim();
@@ -89,11 +93,17 @@
         bookMessage.textContent = `Dodano książkę (ID ${book.id}).`;
       } catch (error) {
         bookMessage.textContent = describe(error, "Nie udało się dodać książki.");
+      } finally {
+        bookButton.disabled = false;
       }
     });
 
-    document.getElementById("copy-form").addEventListener("submit", async (event) => {
+    const copyForm = document.getElementById("copy-form");
+    const copyButton = copyForm.querySelector('button[type="submit"]');
+    copyForm.addEventListener("submit", async (event) => {
       event.preventDefault();
+      if (copyButton.disabled) return;
+      copyButton.disabled = true;
       copyMessage.textContent = "";
       const bookId = document.getElementById("copy-book-id").value.trim();
       const inventory_code = document.getElementById("copy-code").value;
@@ -105,6 +115,8 @@
         copyMessage.textContent = `Dodano egzemplarz ${copy.inventory_code}.`;
       } catch (error) {
         copyMessage.textContent = describe(error, "Nie udało się dodać egzemplarza.");
+      } finally {
+        copyButton.disabled = false;
       }
     });
 

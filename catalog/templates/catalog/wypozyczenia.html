@@ -58,8 +58,12 @@
       }
     }
 
-    document.getElementById("checkout-form").addEventListener("submit", async (event) => {
+    const checkoutForm = document.getElementById("checkout-form");
+    const checkoutButton = checkoutForm.querySelector('button[type="submit"]');
+    checkoutForm.addEventListener("submit", async (event) => {
       event.preventDefault();
+      if (checkoutButton.disabled) return;
+      checkoutButton.disabled = true;
       formMessage.textContent = "";
       const inventoryCode = document.getElementById("inventory-code").value;
       try {
@@ -69,6 +73,8 @@
         await refresh();
       } catch (error) {
         formMessage.textContent = describe(error, "Nie udało się wypożyczyć.");
+      } finally {
+        checkoutButton.disabled = false;
       }
     });
 

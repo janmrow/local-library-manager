@@ -67,8 +67,12 @@
       }
     }
 
-    document.getElementById("login-form").addEventListener("submit", async (event) => {
+    const loginForm = document.getElementById("login-form");
+    const loginButton = loginForm.querySelector('button[type="submit"]');
+    loginForm.addEventListener("submit", async (event) => {
       event.preventDefault();
+      if (loginButton.disabled) return;
+      loginButton.disabled = true;
       loginError.textContent = "";
       const username = document.getElementById("login-username").value.trim();
       const password = document.getElementById("login-password").value;
@@ -82,11 +86,17 @@
           { 400: "Nieprawidłowy login lub hasło.", 403: "Odmowa dostępu." },
           "Nie udało się zalogować."
         );
+      } finally {
+        loginButton.disabled = false;
       }
     });
 
-    document.getElementById("register-form").addEventListener("submit", async (event) => {
+    const registerForm = document.getElementById("register-form");
+    const registerButton = registerForm.querySelector('button[type="submit"]');
+    registerForm.addEventListener("submit", async (event) => {
       event.preventDefault();
+      if (registerButton.disabled) return;
+      registerButton.disabled = true;
       registerError.textContent = "";
       const username = document.getElementById("register-username").value.trim();
       const password = document.getElementById("register-password").value;
@@ -100,6 +110,8 @@
           { 400: "Nie można utworzyć konta — nazwa może być zajęta." },
           "Nie udało się utworzyć konta."
         );
+      } finally {
+        registerButton.disabled = false;
       }
     });
 
