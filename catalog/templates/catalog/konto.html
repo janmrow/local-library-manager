@@ -1,0 +1,109 @@
+{% extends "catalog/base.html" %}
+{% load static %}
+{% block title %}Konto{% endblock %}
+{% block content %}
+  <h1>Konto</h1>
+  <section class="card">
+    <h2>Stan</h2>
+    <p id="account-status" class="status" role="status">Sprawdzanie…</p>
+    <button id="logout" type="button" class="secondary" hidden>Wyloguj</button>
+  </section>
+  <section class="card">
+    <h2>Logowanie</h2>
+    <form id="login-form" class="inline">
+      <label for="login-username">Nazwa użytkownika
+        <input id="login-username" name="username" autocomplete="username" required />
+      </label>
+      <label for="login-password">Hasło
+        <input id="login-password" name="password" type="password" autocomplete="current-password" required />
+      </label>
+      <button type="submit">Zaloguj</button>
+    </form>
+    <p id="login-error" class="status" role="alert"></p>
+  </section>
+  <section class="card">
+    <h2>Rejestracja czytelnika</h2>
+    <form id="register-form" class="inline">
+      <label for="register-username">Nazwa użytkownika
+        <input id="register-username" name="username" autocomplete="username" required />
+      </label>
+      <label for="register-password">Hasło
+        <input id="register-password" name="password" type="password" autocomplete="new-password" required />
+      </label>
+      <button type="submit">Utwórz konto</button>
+    </form>
+    <p id="register-error" class="status" role="alert"></p>
+  </section>
+{% endblock %}
+{% block scripts %}
+  <script type="module">
+    import { ApiError, apiDelete, apiGet, apiPost, fetchSession } from "{% static 'js/api.js' %}";
+
+    const statusNode = document.getElementById("account-status");
+    const logoutButton = document.getElementById("logout");
+    const loginError = document.getElementById("login-error");
+    const registerError = document.getElementById("register-error");
+
+    function message(error, fallback) {
+      if (error instanceof ApiError && error.body && typeof error.body === "object") {
+        return error.body.detail || fallback;
+      }
+      return fallback;
+    }
+
+    async function refresh() {
+      try {
+        const state = await fetchSession();
+        if (state.authenticated) {
+          statusNode.textContent = `Zalogowano jako ${state.username}${state.is_librarian ? " (bibliotekarz)" : ""}.`;
+          logoutButton.hidden = false;
+        } else {
+          statusNode.textContent = "Gość — zaloguj się lub utwórz konto.";
+          logoutButton.hidden = true;
+        }
+      } catch {
+        statusNode.textContent = "Nie udało się sprawdzić stanu konta.";
+        logoutButton.hidden = true;
+      }
+    }
+
+    document.getElementById("login-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      loginError.textContent = "";
+      const username = document.getElementById("login-username").value.trim();
+      const password = document.getElementById("login-password").value;
+      try {
+        await apiGet("/api/v1/session/");
+        await apiPost("/api/v1/session/", { username, password });
+        await refresh();
+      } catch (error) {
+        loginError.textContent = message(error, "Nie udało się zalogować.");
+      }
+    });
+
+    document.getElementById("register-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      registerError.textContent = "";
+      const username = document.getElementById("register-username").value.trim();
+      const password = document.getElementById("register-password").value;
+      try {
+        await apiGet("/api/v1/session/");
+        await apiPost("/api/v1/accounts/", { username, password });
+        registerError.textContent = "Konto utworzone — możesz się zalogować.";
+      } catch (error) {
+        registerError.textContent = message(error, "Nie udało się utworzyć konta.");
+      }
+    });
+
+    logoutButton.addEventListener("click", async () => {
+      try {
+        await apiDelete("/api/v1/session/");
+      } catch {
+        // Wylogowanie ma być skuteczne lokalnie nawet przy błędzie sieci.
+      }
+      await refresh();
+    });
+
+    refresh();
+  </script>
+{% endblock %}
