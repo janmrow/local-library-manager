@@ -45,4 +45,13 @@ Browser `POST /api/v1/loans/` with session + CSRF → API checks access and code
 
 ## Frontend
 
-Three server templates sharing one `api.js` fetch helper with CSRF handling. UI labels in Polish. Pages: public catalogue at `/` (`catalog/templates/catalog/book_list.html` + `static/js/api.js::apiGet`), librarian catalogue changes, reader checkout plus librarian return.
+Four server templates sharing `catalog/templates/catalog/base.html` and one
+`catalog/static/js/api.js` fetch helper (`apiGet`/`apiPost`/`apiDelete`, CSRF from the
+`csrftoken` cookie, `ApiError` carrying status plus the parsed body, usually the
+`{code, detail}` envelope) with vanilla `catalog/static/css/style.css`
+(retro-modern, no framework).
+UI labels in Polish. Pages: public catalogue at `/`
+(`catalog/book_list.html`), account at `/konto/` (`catalog/konto.html`,
+register + sign-in/out), reader loans at `/wypozyczenia/`
+(`catalog/wypozyczenia.html`, checkout + own open loans), librarian panel at
+`/panel/` (`catalog/panel.html`, add book/copy, staff lookup + return).
