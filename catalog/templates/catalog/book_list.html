@@ -41,7 +41,10 @@
         list.innerHTML = "";
         for (const book of data.results) {
           const item = document.createElement("li");
-          item.textContent = `${book.title} — ${book.author} (dostępne: ${book.available_copies}/${book.total_copies}) · ID ${book.id}`;
+          const codes = book.available_codes.length
+            ? ` · ${book.available_codes.join(", ")}`
+            : "";
+          item.textContent = `${book.title} — ${book.author} (dostępne: ${book.available_copies}/${book.total_copies}) · ID ${book.id}${codes}`;
           list.appendChild(item);
         }
         status.textContent =
