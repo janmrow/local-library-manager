@@ -3,6 +3,7 @@
 from django.contrib.auth import authenticate, login, logout
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
+from drf_spectacular.utils import extend_schema
 from rest_framework import serializers
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.exceptions import PermissionDenied
@@ -11,7 +12,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.permissions import LIBRARIANS_GROUP
-from accounts.serializers import RegistrationSerializer
+from accounts.serializers import (
+    LoginSerializer,
+    RegistrationResponseSerializer,
+    RegistrationSerializer,
+    SessionStateSerializer,
+)
 
 
 def enforce_csrf_without_session(request) -> None:
@@ -35,9 +41,11 @@ class SessionView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(responses=SessionStateSerializer)
     def get(self, request):
         return Response(session_state(request.user))
 
+    @extend_schema(request=LoginSerializer, responses=SessionStateSerializer)
     def post(self, request):
         enforce_csrf_without_session(request)
         data = request.data if isinstance(request.data, dict) else {}
@@ -51,6 +59,7 @@ class SessionView(APIView):
         login(request, user)
         return Response(session_state(user))
 
+    @extend_schema(responses={204: None})
     def delete(self, request):
         if not request.user.is_authenticated:
             raise PermissionDenied("Authentication required.")
@@ -63,6 +72,9 @@ class RegistrationView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        request=RegistrationSerializer, responses={201: RegistrationResponseSerializer}
+    )
     def post(self, request):
         enforce_csrf_without_session(request)
         serializer = RegistrationSerializer(data=request.data)

@@ -2,6 +2,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Count, F, Q
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import mixins
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
@@ -12,7 +13,12 @@ from rest_framework.viewsets import GenericViewSet
 from accounts.permissions import IsLibrarian
 from accounts.views import enforce_csrf_without_session
 from catalog.models import Book, BookCopy
-from catalog.serializers import BookCreateSerializer, BookSerializer, CopyCreateSerializer
+from catalog.serializers import (
+    BookCopyResponseSerializer,
+    BookCreateSerializer,
+    BookSerializer,
+    CopyCreateSerializer,
+)
 
 
 def inventory_code_taken():
@@ -26,6 +32,20 @@ class BookPagination(PageNumberPagination):
     page_size = 20
 
 
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "q",
+                str,
+                OpenApiParameter.QUERY,
+                required=False,
+                description="Filter by title or author (icontains).",
+            )
+        ]
+    ),
+    create=extend_schema(request=BookCreateSerializer, responses={201: BookSerializer}),
+)
 class BookViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
@@ -81,6 +101,7 @@ class BookViewSet(
         annotated = self.annotated_books().get(pk=book.pk)
         return Response(BookSerializer(annotated).data, status=201)
 
+    @extend_schema(request=CopyCreateSerializer, responses={201: BookCopyResponseSerializer})
     @action(detail=True, methods=["post"], url_path="copies")
     def add_copy(self, request, pk=None):
         enforce_csrf_without_session(request)

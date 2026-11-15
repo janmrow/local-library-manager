@@ -1,4 +1,4 @@
-"""Registration contract (slice 2: reader accounts only)."""
+"""Registration contract (slice 2: reader accounts only; session shapes are schema-only)."""
 
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
@@ -19,3 +19,25 @@ class RegistrationSerializer(serializers.ModelSerializer):
             username=validated_data["username"],
             password=validated_data["password"],
         )
+
+
+class RegistrationResponseSerializer(serializers.Serializer):
+    """Schema-only shape of the registration 201 body (id + username)."""
+
+    id = serializers.IntegerField(read_only=True)
+    username = serializers.CharField(read_only=True)
+
+
+class LoginSerializer(serializers.Serializer):
+    """Schema-only shape of the sign-in request (the view reads raw data)."""
+
+    username = serializers.CharField()
+    password = serializers.CharField(trim_whitespace=False)
+
+
+class SessionStateSerializer(serializers.Serializer):
+    """Schema-only shape of the sign-in state (mirrors session_state())."""
+
+    authenticated = serializers.BooleanField()
+    username = serializers.CharField(allow_null=True)
+    is_librarian = serializers.BooleanField()

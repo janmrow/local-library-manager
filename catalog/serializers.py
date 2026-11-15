@@ -40,6 +40,14 @@ class BookCreateSerializer(serializers.Serializer):
         return book
 
 
+class BookCopyResponseSerializer(serializers.Serializer):
+    """Schema-only shape of the add-copy response (id, code, book)."""
+
+    id = serializers.IntegerField(read_only=True)
+    inventory_code = serializers.CharField(read_only=True)
+    book = serializers.IntegerField(read_only=True)
+
+
 class CopyCreateSerializer(serializers.Serializer):
     inventory_code = serializers.CharField(max_length=24)
 

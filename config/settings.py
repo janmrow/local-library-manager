@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.staticfiles",
     "rest_framework",
+    "drf_spectacular",
     "accounts",
     "catalog",
     "circulation",
@@ -67,7 +68,14 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
     ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "catalog.exceptions.catalogue_exception_handler",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Local Library Manager",
+    "DESCRIPTION": "Single-branch library circulation API.",
+    "VERSION": "0.1.0",
 }
 
 LOGGING = {
