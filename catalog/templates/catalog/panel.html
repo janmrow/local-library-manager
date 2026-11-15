@@ -22,6 +22,7 @@
   </section>
   <section class="card">
     <h2>Dodaj egzemplarz</h2>
+    <p class="hint">ID książki znajdziesz w Katalogu — każdy wiersz kończy się dopiskiem „· ID …”.</p>
     <form id="copy-form" class="inline">
       <label for="copy-book-id">ID książki
         <input id="copy-book-id" name="book_id" inputmode="numeric" required />
@@ -56,13 +57,11 @@
     const found = document.getElementById("found");
 
     function describe(error, fallback) {
-      if (error instanceof ApiError && error.status === 403) {
-        return "Tylko bibliotekarz.";
-      }
-      if (error instanceof ApiError && error.body && typeof error.body === "object") {
+      if (error instanceof ApiError) {
+        if (error.status === 403) return "Tylko bibliotekarz.";
         if (error.status === 409) return "Ten kod jest już zajęty.";
         if (error.status === 404) return "Nie znaleziono.";
-        return error.body.detail || fallback;
+        if (error.status === 400) return "Sprawdź dane (kod: 3–24 znaki: litery, cyfry, myślnik).";
       }
       return fallback;
     }

@@ -44,9 +44,9 @@
     const loginError = document.getElementById("login-error");
     const registerError = document.getElementById("register-error");
 
-    function message(error, fallback) {
-      if (error instanceof ApiError && error.body && typeof error.body === "object") {
-        return error.body.detail || fallback;
+    function message(error, table, fallback) {
+      if (error instanceof ApiError && table[error.status]) {
+        return table[error.status];
       }
       return fallback;
     }
@@ -77,7 +77,11 @@
         await apiPost("/api/v1/session/", { username, password });
         await refresh();
       } catch (error) {
-        loginError.textContent = message(error, "Nie udało się zalogować.");
+        loginError.textContent = message(
+          error,
+          { 400: "Nieprawidłowy login lub hasło.", 403: "Odmowa dostępu." },
+          "Nie udało się zalogować."
+        );
       }
     });
 
@@ -91,7 +95,11 @@
         await apiPost("/api/v1/accounts/", { username, password });
         registerError.textContent = "Konto utworzone — możesz się zalogować.";
       } catch (error) {
-        registerError.textContent = message(error, "Nie udało się utworzyć konta.");
+        registerError.textContent = message(
+          error,
+          { 400: "Nie można utworzyć konta — nazwa może być zajęta." },
+          "Nie udało się utworzyć konta."
+        );
       }
     });
 

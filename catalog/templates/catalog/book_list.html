@@ -41,7 +41,7 @@
         list.innerHTML = "";
         for (const book of data.results) {
           const item = document.createElement("li");
-          item.textContent = `${book.title} — ${book.author} (dostępne: ${book.available_copies}/${book.total_copies})`;
+          item.textContent = `${book.title} — ${book.author} (dostępne: ${book.available_copies}/${book.total_copies}) · ID ${book.id}`;
           list.appendChild(item);
         }
         status.textContent = `Znaleziono: ${data.count}`;

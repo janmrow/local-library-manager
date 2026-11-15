@@ -11,6 +11,7 @@
       </label>
       <button type="submit">Wypożycz</button>
     </form>
+    <p class="hint">Kod znajdziesz na naklejce egzemplarza, który masz w ręku.</p>
     <p id="checkout-message" class="status" role="status"></p>
   </section>
   <section class="card">
@@ -28,13 +29,11 @@
     const formMessage = document.getElementById("checkout-message");
 
     function describe(error, fallback) {
-      if (error instanceof ApiError && error.status === 403) {
-        return "Zaloguj się, aby wypożyczać.";
-      }
-      if (error instanceof ApiError && error.body && typeof error.body === "object") {
-        if (error.status === 409) return "Ten egzemplarz jest już wypożyczony.";
+      if (error instanceof ApiError) {
+        if (error.status === 403) return "Zaloguj się, aby wypożyczać.";
         if (error.status === 404) return "Nieznany kod egzemplarza.";
-        return error.body.detail || fallback;
+        if (error.status === 409) return "Ten egzemplarz jest już wypożyczony.";
+        if (error.status === 400) return "Nieprawidłowy kod (3–24 znaki: litery, cyfry, myślnik).";
       }
       return fallback;
     }
