@@ -24,6 +24,13 @@ test("search filters the catalogue", async ({ page }) => {
   await expect(page.getByText("Znaleziono: 1")).toBeVisible();
 });
 
+test("empty search explains no results", async ({ page }) => {
+  await page.goto("/");
+  await page.getByLabel("Szukaj").fill("zzz-no-such-book");
+  await page.getByRole("button", { name: "Szukaj" }).click();
+  await expect(page.getByText("Brak wyników — zmień tytuł lub autora.")).toBeVisible();
+});
+
 test("pagination reaches the last result", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText(COUNT_RE)).toBeVisible();
