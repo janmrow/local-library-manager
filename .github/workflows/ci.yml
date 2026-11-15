@@ -1,0 +1,109 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: backend (pytest)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: library
+          POSTGRES_PASSWORD: library
+          POSTGRES_DB: library
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U library"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 15
+    env:
+      DB_NAME: library
+      DB_USER: library
+      DB_PASSWORD: library
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      SECRET_KEY: ci-only
+      ALLOWED_HOSTS: 127.0.0.1,localhost
+      APP_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: uv sync --locked
+      - name: Check migrations
+        run: uv run --locked python manage.py makemigrations --check --dry-run
+      - name: Run pytest
+        run: uv run --locked pytest
+
+  browser:
+    name: browser (playwright)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: library
+          POSTGRES_PASSWORD: library
+          POSTGRES_DB: library
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U library"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 15
+    env:
+      DB_NAME: library
+      DB_USER: library
+      DB_PASSWORD: library
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      SECRET_KEY: ci-only
+      ALLOWED_HOSTS: 127.0.0.1,localhost
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: Install dependencies
+        run: |
+          cp .env.example .env
+          uv sync --locked
+      - name: Create e2e database
+        run: |
+          uv run --locked python -c "
+          import psycopg
+          conn = psycopg.connect(host='127.0.0.1', port=5432, user='library', password='library', dbname='library', autocommit=True)
+          conn.execute('CREATE DATABASE library_e2e')
+          "
+      - name: Migrate and seed e2e database
+        run: |
+          DB_NAME=library_e2e APP_ENV=e2e uv run --locked python manage.py migrate
+          DB_NAME=library_e2e APP_ENV=e2e uv run --locked python manage.py seed_demo --extra-books 25
+      - name: Install browser tests
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Run Playwright
+        working-directory: e2e
+        run: npx playwright test
+      - name: Upload trace on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: e2e/test-results/
+          retention-days: 7

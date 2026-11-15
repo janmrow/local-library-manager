@@ -7,6 +7,9 @@ export default defineConfig({
   workers: 1,
   use: {
     baseURL: "http://127.0.0.1:8001",
+    // Keep the trace on failure only: it may contain cookies and snapshots,
+    // so it stays local (gitignored) and is uploaded from CI briefly.
+    trace: "retain-on-failure",
   },
   webServer: {
     command:
