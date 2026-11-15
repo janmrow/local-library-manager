@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 
 // library_e2e persists between runs: 27 seeded rows plus at most one
 // idempotent book shared by librarian.spec.ts and circulation.spec.ts,
-// hence 27|28.
-const COUNT_RE = /Znaleziono: (27|28)/;
+// plus the UI panel book from loans-panel.spec.ts, hence 27|28|29.
+const COUNT_RE = /Znaleziono: (27|28|29)/;
 
 test("browse catalogue from the database", async ({ page }) => {
   await page.goto("/");
