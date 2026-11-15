@@ -1,0 +1,42 @@
+{% load static %}
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Biblioteka{% endblock %} — Biblioteka</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="/">Biblioteka</a>
+        {# Nav do /konto/, /wypozyczenia/, /panel/ wróci z kolejnymi klockami (routes jeszcze nie istnieją). #}
+        <p class="session" id="session-state" role="status">Gość</p>
+      </div>
+    </header>
+    <main class="wrap">
+      {% block content %}{% endblock %}
+    </main>
+    <footer class="site-footer">
+      <div class="wrap">
+        <small>Lokalna biblioteka — katalog i wypożyczenia na miejscu.</small>
+      </div>
+    </footer>
+    <script type="module">
+      import { apiGet } from "{% static 'js/api.js' %}";
+      const node = document.getElementById("session-state");
+      (async () => {
+        try {
+          const state = await apiGet("/api/v1/session/");
+          node.textContent = state.authenticated
+            ? `${state.username}${state.is_librarian ? " (bibliotekarz)" : ""}`
+            : "Gość";
+        } catch {
+          node.textContent = "Gość";
+        }
+      })();
+    </script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>
