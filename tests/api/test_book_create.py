@@ -159,6 +159,7 @@ class TestBookCreate:
             "author": "Auth",
             "available_copies": 1,
             "total_copies": 1,
+            "available_codes": ["LL-014"],
         }
         listed = test_client.get("/api/v1/books/", {"q": "Fresh"})
         assert listed.json()["count"] == 1

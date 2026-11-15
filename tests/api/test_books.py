@@ -31,6 +31,7 @@ class TestBookList:
             "author": "Frank Herbert",
             "available_copies": 1,
             "total_copies": 1,
+            "available_codes": ["LL-002"],
         }
 
     def test_search_matches_title_or_author(self, client, two_books):
@@ -62,7 +63,7 @@ class TestBookList:
 
 @pytest.mark.django_db
 class TestBookDetail:
-    def test_detail_shape_without_copies(self, client, two_books):
+    def test_detail_shape_includes_available_codes(self, client, two_books):
         solaris, _ = two_books
         response = client.get(f"/api/v1/books/{solaris.id}/")
         assert response.status_code == 200
@@ -72,6 +73,7 @@ class TestBookDetail:
             "author": "Stanisław Lem",
             "available_copies": 1,
             "total_copies": 1,
+            "available_codes": ["LL-001"],
         }
 
     def test_unknown_id_returns_not_found_envelope(self, client, db):
@@ -131,6 +133,22 @@ class TestAvailability:
         listed = client.get("/api/v1/books/").json()["results"][0]
         assert listed["total_copies"] == expected["total_copies"]
         assert listed["available_copies"] == expected["available_copies"]
+
+    def test_available_codes_excludes_open_loan(self, client, db):
+        from django.utils import timezone
+
+        user = get_user_model().objects.create(username="reader1")
+        book = Book.objects.create(title="Solaris", author="Stanisław Lem")
+        returned = BookCopy.objects.create(inventory_code="LL-001", book=book)
+        open_loan = BookCopy.objects.create(inventory_code="LL-002", book=book)
+        BookCopy.objects.create(inventory_code="LL-003", book=book)
+        Loan.objects.create(copy=returned, reader=user, returned_at=timezone.now())
+        Loan.objects.create(copy=open_loan, reader=user)
+        expected_codes = ["LL-001", "LL-003"]
+        detail = client.get(f"/api/v1/books/{book.id}/").json()
+        assert detail["available_codes"] == expected_codes
+        listed = client.get("/api/v1/books/").json()["results"][0]
+        assert listed["available_codes"] == expected_codes
 
 
 @pytest.mark.django_db

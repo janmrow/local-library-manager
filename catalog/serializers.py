@@ -16,10 +16,21 @@ def normalize_code(value):
 class BookSerializer(serializers.ModelSerializer):
     available_copies = serializers.IntegerField(read_only=True)
     total_copies = serializers.IntegerField(read_only=True)
+    available_codes = serializers.SerializerMethodField()
 
     class Meta:
         model = Book
-        fields = ["id", "title", "author", "available_copies", "total_copies"]
+        fields = [
+            "id",
+            "title",
+            "author",
+            "available_copies",
+            "total_copies",
+            "available_codes",
+        ]
+
+    def get_available_codes(self, obj):
+        return [copy.inventory_code for copy in obj.copies.all() if not copy.open_loans]
 
 
 class BookCreateSerializer(serializers.Serializer):

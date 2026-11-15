@@ -1,5 +1,5 @@
 from django.db import IntegrityError, transaction
-from django.db.models import Count, F, Q
+from django.db.models import Count, F, Prefetch, Q
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
@@ -78,6 +78,16 @@ class BookViewSet(
                 ),
             )
             .annotate(available_copies=F("total_copies") - F("open_loans"))
+            .prefetch_related(
+                Prefetch(
+                    "copies",
+                    queryset=BookCopy.objects.annotate(
+                        open_loans=Count(
+                            "loan", filter=Q(loan__returned_at__isnull=True)
+                        )
+                    ).order_by("inventory_code"),
+                )
+            )
             .order_by("title", "id")
         )
 
