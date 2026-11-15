@@ -11,7 +11,11 @@
     <header class="site-header">
       <div class="wrap header-inner">
         <a class="brand" href="/">Biblioteka</a>
-        {# Nav do /konto/, /wypozyczenia/, /panel/ wróci z kolejnymi klockami (routes jeszcze nie istnieją). #}
+        <nav class="site-nav" aria-label="Nawigacja">
+          <a href="/">Katalog</a>
+          <a href="/konto/">Konto</a>
+        </nav>
+        {# /wypozyczenia/ i /panel/ wrócą z kolejnymi klockami. #}
         <p class="session" id="session-state" role="status">Gość</p>
       </div>
     </header>
