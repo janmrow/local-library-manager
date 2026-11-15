@@ -11,4 +11,5 @@ urlpatterns = [
         TemplateView.as_view(template_name="catalog/wypozyczenia.html"),
         name="loans-page",
     ),
+    path("panel/", TemplateView.as_view(template_name="catalog/panel.html"), name="staff-page"),
 ]

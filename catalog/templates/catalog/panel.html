@@ -1,0 +1,152 @@
+{% extends "catalog/base.html" %}
+{% load static %}
+{% block title %}Panel bibliotekarza{% endblock %}
+{% block content %}
+  <h1>Panel bibliotekarza</h1>
+  <p id="staff-gate" class="status" role="status">Sprawdzanie uprawnień…</p>
+  <section class="card">
+    <h2>Dodaj książkę z pierwszym egzemplarzem</h2>
+    <form id="book-form" class="inline">
+      <label for="book-title">Tytuł
+        <input id="book-title" name="title" required />
+      </label>
+      <label for="book-author">Autor
+        <input id="book-author" name="author" required />
+      </label>
+      <label for="book-code">Kod egzemplarza
+        <input id="book-code" name="inventory_code" placeholder="np. LL-002" required />
+      </label>
+      <button type="submit">Dodaj książkę</button>
+    </form>
+    <p id="book-message" class="status" role="status"></p>
+  </section>
+  <section class="card">
+    <h2>Dodaj egzemplarz</h2>
+    <form id="copy-form" class="inline">
+      <label for="copy-book-id">ID książki
+        <input id="copy-book-id" name="book_id" inputmode="numeric" required />
+      </label>
+      <label for="copy-code">Kod egzemplarza
+        <input id="copy-code" name="inventory_code" placeholder="np. LL-003" required />
+      </label>
+      <button type="submit">Dodaj egzemplarz</button>
+    </form>
+    <p id="copy-message" class="status" role="status"></p>
+  </section>
+  <section class="card">
+    <h2>Zwrot egzemplarza</h2>
+    <form id="lookup-form" class="inline">
+      <label for="lookup-code">Kod egzemplarza
+        <input id="lookup-code" name="inventory_code" placeholder="np. LL-001" required />
+      </label>
+      <button type="submit">Znajdź</button>
+    </form>
+    <p id="lookup-message" class="status" role="status"></p>
+    <ul id="found" class="books"></ul>
+  </section>
+{% endblock %}
+{% block scripts %}
+  <script type="module">
+    import { ApiError, apiGet, apiPost, fetchSession } from "{% static 'js/api.js' %}";
+
+    const gate = document.getElementById("staff-gate");
+    const bookMessage = document.getElementById("book-message");
+    const copyMessage = document.getElementById("copy-message");
+    const lookupMessage = document.getElementById("lookup-message");
+    const found = document.getElementById("found");
+
+    function describe(error, fallback) {
+      if (error instanceof ApiError && error.status === 403) {
+        return "Tylko bibliotekarz.";
+      }
+      if (error instanceof ApiError && error.body && typeof error.body === "object") {
+        if (error.status === 409) return "Ten kod jest już zajęty.";
+        if (error.status === 404) return "Nie znaleziono.";
+        return error.body.detail || fallback;
+      }
+      return fallback;
+    }
+
+    async function checkGate() {
+      try {
+        const state = await fetchSession();
+        gate.textContent = state.is_librarian
+          ? `Zalogowano jako ${state.username} (bibliotekarz).`
+          : "Tylko bibliotekarz — zaloguj się na konto z uprawnieniami.";
+      } catch {
+        gate.textContent = "Nie udało się sprawdzić uprawnień.";
+      }
+    }
+
+    document.getElementById("book-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      bookMessage.textContent = "";
+      const title = document.getElementById("book-title").value.trim();
+      const author = document.getElementById("book-author").value.trim();
+      const inventory_code = document.getElementById("book-code").value;
+      try {
+        await apiGet("/api/v1/session/");
+        const book = await apiPost("/api/v1/books/", { title, author, inventory_code });
+        bookMessage.textContent = `Dodano książkę (ID ${book.id}).`;
+      } catch (error) {
+        bookMessage.textContent = describe(error, "Nie udało się dodać książki.");
+      }
+    });
+
+    document.getElementById("copy-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      copyMessage.textContent = "";
+      const bookId = document.getElementById("copy-book-id").value.trim();
+      const inventory_code = document.getElementById("copy-code").value;
+      try {
+        await apiGet("/api/v1/session/");
+        const copy = await apiPost(`/api/v1/books/${encodeURIComponent(bookId)}/copies/`, {
+          inventory_code,
+        });
+        copyMessage.textContent = `Dodano egzemplarz ${copy.inventory_code}.`;
+      } catch (error) {
+        copyMessage.textContent = describe(error, "Nie udało się dodać egzemplarza.");
+      }
+    });
+
+    document.getElementById("lookup-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      lookupMessage.textContent = "";
+      found.innerHTML = "";
+      const code = document.getElementById("lookup-code").value;
+      try {
+        const loans = await apiGet(
+          `/api/v1/staff/loans/?inventory_code=${encodeURIComponent(code.trim())}`
+        );
+        if (loans.length === 0) {
+          lookupMessage.textContent = "Brak otwartego wypożyczenia.";
+          return;
+        }
+        lookupMessage.textContent = "Znaleziono otwarte wypożyczenie.";
+        for (const loan of loans) {
+          const item = document.createElement("li");
+          item.textContent = `${loan.inventory_code} — wypożyczone ${loan.borrowed_at} `;
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = "Zwróć";
+          button.addEventListener("click", async () => {
+            try {
+              await apiGet("/api/v1/session/");
+              await apiPost(`/api/v1/loans/${loan.id}/return/`, {});
+              lookupMessage.textContent = "Zwrócono.";
+              found.innerHTML = "";
+            } catch (error) {
+              lookupMessage.textContent = describe(error, "Nie udało się zwrócić.");
+            }
+          });
+          item.appendChild(button);
+          found.appendChild(item);
+        }
+      } catch (error) {
+        lookupMessage.textContent = describe(error, "Nie udało się wyszukać.");
+      }
+    });
+
+    checkGate();
+  </script>
+{% endblock %}
