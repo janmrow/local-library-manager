@@ -1,0 +1,78 @@
+{% extends "catalog/base.html" %}
+{% load static %}
+{% block title %}Moje wypożyczenia{% endblock %}
+{% block content %}
+  <h1>Moje wypożyczenia</h1>
+  <section class="card">
+    <h2>Wypożycz egzemplarz</h2>
+    <form id="checkout-form" class="inline">
+      <label for="inventory-code">Kod egzemplarza
+        <input id="inventory-code" name="inventory_code" placeholder="np. LL-001" required />
+      </label>
+      <button type="submit">Wypożycz</button>
+    </form>
+    <p id="checkout-message" class="status" role="status"></p>
+  </section>
+  <section class="card">
+    <h2>Otwarte wypożyczenia</h2>
+    <p id="loans-status" class="status" role="status">Ładowanie…</p>
+    <ul id="loans" class="books"></ul>
+  </section>
+{% endblock %}
+{% block scripts %}
+  <script type="module">
+    import { ApiError, apiGet, apiPost } from "{% static 'js/api.js' %}";
+
+    const list = document.getElementById("loans");
+    const listStatus = document.getElementById("loans-status");
+    const formMessage = document.getElementById("checkout-message");
+
+    function describe(error, fallback) {
+      if (error instanceof ApiError && error.status === 403) {
+        return "Zaloguj się, aby wypożyczać.";
+      }
+      if (error instanceof ApiError && error.body && typeof error.body === "object") {
+        if (error.status === 409) return "Ten egzemplarz jest już wypożyczony.";
+        if (error.status === 404) return "Nieznany kod egzemplarza.";
+        return error.body.detail || fallback;
+      }
+      return fallback;
+    }
+
+    async function refresh() {
+      listStatus.textContent = "Ładowanie…";
+      try {
+        const loans = await apiGet("/api/v1/loans/");
+        list.innerHTML = "";
+        if (loans.length === 0) {
+          listStatus.textContent = "Brak otwartych wypożyczeń.";
+          return;
+        }
+        for (const loan of loans) {
+          const item = document.createElement("li");
+          item.textContent = `${loan.inventory_code} (od ${loan.borrowed_at})`;
+          list.appendChild(item);
+        }
+        listStatus.textContent = `Otwarte: ${loans.length}`;
+      } catch (error) {
+        listStatus.textContent = describe(error, "Nie udało się wczytać wypożyczeń.");
+      }
+    }
+
+    document.getElementById("checkout-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      formMessage.textContent = "";
+      const inventoryCode = document.getElementById("inventory-code").value;
+      try {
+        await apiGet("/api/v1/session/");
+        await apiPost("/api/v1/loans/", { inventory_code: inventoryCode });
+        formMessage.textContent = "Wypożyczono.";
+        await refresh();
+      } catch (error) {
+        formMessage.textContent = describe(error, "Nie udało się wypożyczyć.");
+      }
+    });
+
+    refresh();
+  </script>
+{% endblock %}
