@@ -5,6 +5,7 @@
   <h1>Moje wypożyczenia</h1>
   <section class="card">
     <h2>Wypożycz egzemplarz</h2>
+    <p id="checkout-gate" class="hint" hidden>Aby wypożyczać, <a href="/konto/">zaloguj się</a>.</p>
     <form id="checkout-form" class="inline">
       <label for="inventory-code">Kod egzemplarza
         <input id="inventory-code" name="inventory_code" placeholder="np. LL-001" required />
@@ -22,11 +23,12 @@
 {% endblock %}
 {% block scripts %}
   <script type="module">
-    import { ApiError, apiGet, apiPost } from "{% static 'js/api.js' %}";
+    import { ApiError, apiGet, apiPost, fetchSession } from "{% static 'js/api.js' %}";
 
     const list = document.getElementById("loans");
     const listStatus = document.getElementById("loans-status");
     const formMessage = document.getElementById("checkout-message");
+    const checkoutGate = document.getElementById("checkout-gate");
 
     function describe(error, fallback) {
       if (error instanceof ApiError) {
@@ -38,9 +40,27 @@
       return fallback;
     }
 
+    function loginLink() {
+      const anchor = document.createElement("a");
+      anchor.href = "/konto/";
+      anchor.textContent = "zaloguj się";
+      return anchor;
+    }
+
+    function forbid(node, prefix) {
+      node.textContent = "";
+      node.append(`${prefix} `, loginLink(), ".");
+    }
+
     async function refresh() {
       listStatus.textContent = "Ładowanie…";
       try {
+        const session = await fetchSession();
+        const signedIn = !!session?.authenticated;
+        checkoutForm.querySelectorAll("input,button").forEach((el) => {
+          el.disabled = !signedIn;
+        });
+        checkoutGate.hidden = signedIn;
         const loans = await apiGet("/api/v1/loans/");
         list.innerHTML = "";
         if (loans.length === 0) {
@@ -49,12 +69,16 @@
         }
         for (const loan of loans) {
           const item = document.createElement("li");
-          item.textContent = `${loan.inventory_code} (od ${loan.borrowed_at})`;
+          item.textContent = `${loan.inventory_code} (od ${new Date(loan.borrowed_at).toLocaleString("pl-PL")})`;
           list.appendChild(item);
         }
         listStatus.textContent = `Otwarte: ${loans.length}`;
       } catch (error) {
-        listStatus.textContent = describe(error, "Nie udało się wczytać wypożyczeń.");
+        if (error instanceof ApiError && error.status === 403) {
+          forbid(listStatus, "Aby zobaczyć wypożyczenia,");
+        } else {
+          listStatus.textContent = describe(error, "Nie udało się wczytać wypożyczeń.");
+        }
       }
     }
 
@@ -72,7 +96,11 @@
         formMessage.textContent = "Wypożyczono.";
         await refresh();
       } catch (error) {
-        formMessage.textContent = describe(error, "Nie udało się wypożyczyć.");
+        if (error instanceof ApiError && error.status === 403) {
+          forbid(formMessage, "Aby wypożyczać,");
+        } else {
+          formMessage.textContent = describe(error, "Nie udało się wypożyczyć.");
+        }
       } finally {
         checkoutButton.disabled = false;
       }

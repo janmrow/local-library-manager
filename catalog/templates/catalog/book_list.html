@@ -44,7 +44,8 @@
           item.textContent = `${book.title} — ${book.author} (dostępne: ${book.available_copies}/${book.total_copies}) · ID ${book.id}`;
           list.appendChild(item);
         }
-        status.textContent = `Znaleziono: ${data.count}`;
+        status.textContent =
+          data.count === 0 ? "Brak wyników — zmień tytuł lub autora." : `Znaleziono: ${data.count}`;
         previousUrl = data.previous;
         nextUrl = data.next;
         prevButton.disabled = !previousUrl;
