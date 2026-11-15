@@ -93,4 +93,4 @@ WHERE c.inventory_code = 'LL-001'
 ORDER BY l.borrowed_at DESC;
 ```
 
-The response, log and database state should explain the same outcome. File the failure note per `CONTRIBUTING.md`.
+The response, log and database state should explain the same outcome. File the failure note per `CONTRIBUTING.md`. Example: `docs/diagnosis-409-copy-unavailable.md` (expected 409, no fault).
