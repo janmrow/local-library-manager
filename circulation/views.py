@@ -3,6 +3,7 @@
 import re
 
 from django.http import Http404
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import mixins, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -62,6 +63,7 @@ class LoanViewSet(
             return loan_envelope("not_found", "Loan not found.", 404)
         return Response(self.get_serializer(loan).data, headers=NO_STORE)
 
+    @extend_schema(request=CheckoutSerializer, responses={201: LoanSerializer})
     def create(self, request, *args, **kwargs):
         enforce_csrf_without_session(request)
         input_serializer = CheckoutSerializer(data=request.data)
@@ -87,6 +89,14 @@ class StaffLoanListView(APIView):
 
     permission_classes = [IsLibrarian]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "inventory_code", str, OpenApiParameter.QUERY, required=True
+            )
+        ],
+        responses=LoanSerializer(many=True),
+    )
     def get(self, request):
         values = request.query_params.getlist("inventory_code")
         if len(values) > 1:
@@ -115,6 +125,7 @@ class LoanReturnView(APIView):
 
     permission_classes = [IsLibrarian]
 
+    @extend_schema(request=None, responses=LoanSerializer)
     def post(self, request, pk):
         enforce_csrf_without_session(request)
         # Decimal digits only: int() would also accept "+1", " 1 " or
