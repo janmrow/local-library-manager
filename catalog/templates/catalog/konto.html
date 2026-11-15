@@ -78,8 +78,9 @@
       const password = document.getElementById("login-password").value;
       try {
         await apiGet("/api/v1/session/");
-        await apiPost("/api/v1/session/", { username, password });
+        const state = await apiPost("/api/v1/session/", { username, password });
         await refresh();
+        window.location.assign(state.is_librarian ? "/panel/" : "/wypozyczenia/");
       } catch (error) {
         loginError.textContent = message(
           error,

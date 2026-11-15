@@ -28,14 +28,12 @@ test("panel add, reader checkout and librarian return through the UI", async ({
     }
   }
 
-  // Librarian signs in through the account UI.
+  // Librarian signs in through the account UI — lands on the panel.
   await page.goto("/konto/");
   await page.locator("#login-username").fill(LIBRARIAN.username);
   await page.locator("#login-password").fill(LIBRARIAN.password);
   await page.getByRole("button", { name: "Zaloguj" }).click();
-  await expect(page.locator("#account-status")).toHaveText(
-    `Zalogowano jako ${LIBRARIAN.username} (bibliotekarz).`,
-  );
+  await expect(page).toHaveURL("/panel/");
 
   // Librarian adds the book through the panel UI (201, or 409 when it exists).
   await page.goto("/panel/");
@@ -70,9 +68,7 @@ test("panel add, reader checkout and librarian return through the UI", async ({
   await page.locator("#login-username").fill(READER.username);
   await page.locator("#login-password").fill(READER.password);
   await page.getByRole("button", { name: "Zaloguj" }).click();
-  await expect(page.locator("#account-status")).toHaveText(
-    `Zalogowano jako ${READER.username}.`,
-  );
+  await expect(page).toHaveURL("/wypozyczenia/");
 
   await page.goto("/wypozyczenia/");
   await page.locator("#inventory-code").fill(COPY_CODE);
@@ -92,10 +88,7 @@ test("panel add, reader checkout and librarian return through the UI", async ({
   await page.locator("#login-username").fill(LIBRARIAN.username);
   await page.locator("#login-password").fill(LIBRARIAN.password);
   await page.getByRole("button", { name: "Zaloguj" }).click();
-  await expect(page.locator("#account-status")).toHaveText(
-    `Zalogowano jako ${LIBRARIAN.username} (bibliotekarz).`,
-  );
-  await page.goto("/panel/");
+  await expect(page).toHaveURL("/panel/");
   await page.locator("#lookup-code").fill(COPY_CODE);
   await page.getByRole("button", { name: "Znajdź" }).click();
   await expect(page.locator("#lookup-message")).toHaveText(

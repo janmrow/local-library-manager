@@ -23,13 +23,14 @@ test("account register, login and logout through the UI", async ({ page }) => {
     "Konto utworzone — możesz się zalogować.",
   );
 
-  // Sign in as the new reader.
+  // Sign in as the new reader — lands on the loans page by role.
   await page.locator("#login-username").fill(username);
   await page.locator("#login-password").fill(password);
   await page.getByRole("button", { name: "Zaloguj" }).click();
-  await expect(page.locator("#account-status")).toHaveText(`Zalogowano jako ${username}.`);
+  await expect(page).toHaveURL("/wypozyczenia/");
 
   // Sign out back to guest.
+  await page.goto("/konto/");
   await page.getByRole("button", { name: "Wyloguj" }).click();
   await expect(page.locator("#account-status")).toHaveText(
     "Gość — zaloguj się lub utwórz konto.",
