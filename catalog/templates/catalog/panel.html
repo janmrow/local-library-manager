@@ -128,6 +128,7 @@
         await apiGet("/api/v1/session/");
         const book = await apiPost("/api/v1/books/", { title, author, inventory_code });
         bookMessage.textContent = `Dodano książkę (ID ${book.id}).`;
+        bookForm.reset();
       } catch (error) {
         if (error instanceof ApiError && error.status === 403) {
           deny(bookMessage);
@@ -163,6 +164,7 @@
           inventory_code,
         });
         copyMessage.textContent = `Dodano egzemplarz ${copy.inventory_code}.`;
+        copyForm.reset();
       } catch (error) {
         if (error instanceof ApiError && error.status === 403) {
           deny(copyMessage);

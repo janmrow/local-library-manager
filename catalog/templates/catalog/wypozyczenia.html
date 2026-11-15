@@ -94,6 +94,7 @@
         await apiGet("/api/v1/session/");
         await apiPost("/api/v1/loans/", { inventory_code: inventoryCode });
         formMessage.textContent = "Wypożyczono.";
+        checkoutForm.reset();
         await refresh();
       } catch (error) {
         if (error instanceof ApiError && error.status === 403) {
