@@ -56,24 +56,61 @@
     const lookupMessage = document.getElementById("lookup-message");
     const found = document.getElementById("found");
 
-    function describe(error, fallback) {
+    function staffLoginLink() {
+      const anchor = document.createElement("a");
+      anchor.href = "/konto/";
+      anchor.textContent = "zaloguj się";
+      return anchor;
+    }
+
+    function deny(node) {
+      node.textContent = "";
+      node.append("Tylko bibliotekarz — ", staffLoginLink(), " na konto z uprawnieniami.");
+    }
+
+    function describe(
+      error,
+      fallback,
+      badRequest = "Sprawdź dane (kod: 3–24 znaki: litery, cyfry, myślnik)."
+    ) {
       if (error instanceof ApiError) {
         if (error.status === 403) return "Tylko bibliotekarz.";
         if (error.status === 409) return "Ten kod jest już zajęty.";
         if (error.status === 404) return "Nie znaleziono.";
-        if (error.status === 400) return "Sprawdź dane (kod: 3–24 znaki: litery, cyfry, myślnik).";
+        if (error.status === 400) return badRequest;
       }
       return fallback;
+    }
+
+    const staffForms = ["book-form", "copy-form", "lookup-form"].map((id) =>
+      document.getElementById(id)
+    );
+
+    function setStaffEnabled(enabled) {
+      for (const form of staffForms) {
+        form.querySelectorAll("input,button").forEach((el) => {
+          el.disabled = !enabled;
+        });
+      }
     }
 
     async function checkGate() {
       try {
         const state = await fetchSession();
-        gate.textContent = state.is_librarian
-          ? `Zalogowano jako ${state.username} (bibliotekarz).`
-          : "Tylko bibliotekarz — zaloguj się na konto z uprawnieniami.";
+        if (state.is_librarian) {
+          gate.textContent = `Zalogowano jako ${state.username} (bibliotekarz).`;
+          setStaffEnabled(true);
+        } else if (state.authenticated) {
+          gate.textContent = `Zalogowano jako ${state.username} — to konto nie ma uprawnień bibliotekarza.`;
+          setStaffEnabled(false);
+        } else {
+          gate.textContent = "";
+          gate.append("Tylko bibliotekarz — ", staffLoginLink(), " na konto z uprawnieniami.");
+          setStaffEnabled(false);
+        }
       } catch {
         gate.textContent = "Nie udało się sprawdzić uprawnień.";
+        setStaffEnabled(false);
       }
     }
 
@@ -92,7 +129,15 @@
         const book = await apiPost("/api/v1/books/", { title, author, inventory_code });
         bookMessage.textContent = `Dodano książkę (ID ${book.id}).`;
       } catch (error) {
-        bookMessage.textContent = describe(error, "Nie udało się dodać książki.");
+        if (error instanceof ApiError && error.status === 403) {
+          deny(bookMessage);
+        } else {
+          bookMessage.textContent = describe(
+            error,
+            "Nie udało się dodać książki.",
+            "Sprawdź dane (tytuł i autor do 255 znaków, kod: 3–24 znaki: litery, cyfry, myślnik)."
+          );
+        }
       } finally {
         bookButton.disabled = false;
       }
@@ -106,6 +151,11 @@
       copyButton.disabled = true;
       copyMessage.textContent = "";
       const bookId = document.getElementById("copy-book-id").value.trim();
+      if (!/^[0-9]+$/.test(bookId)) {
+        copyMessage.textContent = "Podaj numeryczne ID książki z Katalogu.";
+        copyButton.disabled = false;
+        return;
+      }
       const inventory_code = document.getElementById("copy-code").value;
       try {
         await apiGet("/api/v1/session/");
@@ -114,7 +164,11 @@
         });
         copyMessage.textContent = `Dodano egzemplarz ${copy.inventory_code}.`;
       } catch (error) {
-        copyMessage.textContent = describe(error, "Nie udało się dodać egzemplarza.");
+        if (error instanceof ApiError && error.status === 403) {
+          deny(copyMessage);
+        } else {
+          copyMessage.textContent = describe(error, "Nie udało się dodać egzemplarza.");
+        }
       } finally {
         copyButton.disabled = false;
       }
@@ -136,7 +190,7 @@
         lookupMessage.textContent = "Znaleziono otwarte wypożyczenie.";
         for (const loan of loans) {
           const item = document.createElement("li");
-          item.textContent = `${loan.inventory_code} — wypożyczone ${loan.borrowed_at} `;
+          item.textContent = `${loan.inventory_code} — wypożyczone ${new Date(loan.borrowed_at).toLocaleString("pl-PL")} `;
           const button = document.createElement("button");
           button.type = "button";
           button.textContent = "Zwróć";
@@ -147,14 +201,22 @@
               lookupMessage.textContent = "Zwrócono.";
               found.innerHTML = "";
             } catch (error) {
-              lookupMessage.textContent = describe(error, "Nie udało się zwrócić.");
+              if (error instanceof ApiError && error.status === 403) {
+                deny(lookupMessage);
+              } else {
+                lookupMessage.textContent = describe(error, "Nie udało się zwrócić.");
+              }
             }
           });
           item.appendChild(button);
           found.appendChild(item);
         }
       } catch (error) {
-        lookupMessage.textContent = describe(error, "Nie udało się wyszukać.");
+        if (error instanceof ApiError && error.status === 403) {
+          deny(lookupMessage);
+        } else {
+          lookupMessage.textContent = describe(error, "Nie udało się wyszukać.");
+        }
       }
     });
 

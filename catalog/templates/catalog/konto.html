@@ -104,6 +104,7 @@
         await apiGet("/api/v1/session/");
         await apiPost("/api/v1/accounts/", { username, password });
         registerError.textContent = "Konto utworzone — możesz się zalogować.";
+        document.getElementById("login-username").focus();
       } catch (error) {
         registerError.textContent = message(
           error,
