@@ -1,6 +1,20 @@
-"""Slice 4 release: the published OpenAPI document matches the API."""
+"""Slice 4 release: the published OpenAPI document matches the API.
+
+One test per write route pins both directions (request + response), so a
+wrongly inferred schema fails here instead of shipping silently.
+"""
 
 import pytest
+
+
+def _request_ref(doc, path, method):
+    op = doc["paths"][path][method]
+    return op["requestBody"]["content"]["application/json"]["schema"]["$ref"]
+
+
+def _response_ref(doc, path, method, status):
+    op = doc["paths"][path][method]
+    return op["responses"][status]["content"]["application/json"]["schema"]["$ref"]
 
 
 @pytest.mark.django_db
@@ -22,50 +36,53 @@ class TestOpenApiSchema:
             "/api/v1/staff/loans/",
         }
 
-    def test_schema_documents_checkout_shape_not_loan(self, client, db):
-        response = client.get("/api/schema/?format=json")
-        assert response.status_code == 200
-        body = response.json()
-        create = body["paths"]["/api/v1/loans/"]["post"]
-        ref = create["requestBody"]["content"]["application/json"]["schema"]["$ref"]
-        assert ref.endswith("/Checkout")
-        assert set(body["components"]["schemas"]["Checkout"]["properties"]) == {
-            "inventory_code"
+    def test_schema_documents_checkout_both_directions(self, client, db):
+        doc = client.get("/api/schema/?format=json").json()
+        assert _request_ref(doc, "/api/v1/loans/", "post").endswith("/Checkout")
+        assert _response_ref(doc, "/api/v1/loans/", "post", "201").endswith("/Loan")
+        assert (
+            set(doc["components"]["schemas"]["Checkout"]["properties"])
+            == {"inventory_code"}
+        )
+        assert set(doc["components"]["schemas"]["Loan"]["properties"]) >= {
+            "id",
+            "inventory_code",
+            "book",
+            "borrowed_at",
+            "returned_at",
         }
 
-    def test_schema_documents_book_create_response(self, client, db):
-        response = client.get("/api/schema/?format=json")
-        assert response.status_code == 200
-        body = response.json()
-        create = body["paths"]["/api/v1/books/"]["post"]
-        ref = create["responses"]["201"]["content"]["application/json"]["schema"]["$ref"]
-        assert ref.endswith("/Book")
-        assert (
-            set(body["components"]["schemas"]["Book"]["properties"])
-            >= {"id", "title", "author", "available_copies", "total_copies"}
-        )
+    def test_schema_documents_book_create_both_directions(self, client, db):
+        doc = client.get("/api/schema/?format=json").json()
+        assert _request_ref(doc, "/api/v1/books/", "post").endswith("/BookCreate")
+        assert _response_ref(doc, "/api/v1/books/", "post", "201").endswith("/Book")
+        assert set(doc["components"]["schemas"]["Book"]["properties"]) >= {
+            "id",
+            "title",
+            "author",
+            "available_copies",
+            "total_copies",
+        }
 
-    def test_schema_documents_copy_create_response(self, client, db):
-        response = client.get("/api/schema/?format=json")
-        assert response.status_code == 200
-        body = response.json()
-        add_copy = body["paths"]["/api/v1/books/{id}/copies/"]["post"]
-        ref = add_copy["responses"]["201"]["content"]["application/json"]["schema"]["$ref"]
-        assert ref.endswith("/BookCopyResponse")
-        assert (
-            set(body["components"]["schemas"]["BookCopyResponse"]["properties"])
-            == {"id", "inventory_code", "book"}
-        )
+    def test_schema_documents_copy_create_both_directions(self, client, db):
+        doc = client.get("/api/schema/?format=json").json()
+        path = "/api/v1/books/{id}/copies/"
+        assert _request_ref(doc, path, "post").endswith("/CopyCreate")
+        assert _response_ref(doc, path, "post", "201").endswith("/BookCopyResponse")
+        assert set(doc["components"]["schemas"]["BookCopyResponse"]["properties"]) == {
+            "id",
+            "inventory_code",
+            "book",
+        }
 
-    def test_schema_documents_registration_without_password(self, client, db):
-        response = client.get("/api/schema/?format=json")
-        assert response.status_code == 200
-        body = response.json()
-        register = body["paths"]["/api/v1/accounts/"]["post"]
-        ref = register["responses"]["201"]["content"]["application/json"]["schema"]["$ref"]
-        assert ref.endswith("/RegistrationResponse")
+    def test_schema_documents_registration_both_directions(self, client, db):
+        doc = client.get("/api/schema/?format=json").json()
+        assert _request_ref(doc, "/api/v1/accounts/", "post").endswith("/Registration")
+        assert _response_ref(doc, "/api/v1/accounts/", "post", "201").endswith(
+            "/RegistrationResponse"
+        )
         assert (
-            set(body["components"]["schemas"]["RegistrationResponse"]["properties"])
+            set(doc["components"]["schemas"]["RegistrationResponse"]["properties"])
             == {"id", "username"}
         )
 
@@ -80,6 +97,14 @@ class TestOpenApiSchema:
             "is_librarian",
         }
         assert set(schemas["Login"]["properties"]) == {"username", "password"}
+        sign_in = body["paths"]["/api/v1/session/"]["post"]
+        assert sign_in["requestBody"]["content"]["application/json"]["schema"][
+            "$ref"
+        ].endswith("/Login")
+        assert sign_in["responses"]["200"]["content"]["application/json"]["schema"][
+            "$ref"
+        ].endswith("/SessionState")
+        assert "204" in body["paths"]["/api/v1/session/"]["delete"]["responses"]
 
     def test_schema_documents_staff_lookup_param(self, client, db):
         response = client.get("/api/schema/?format=json")
@@ -100,7 +125,9 @@ class TestOpenApiSchema:
         assert response.status_code == 200
         returning = response.json()["paths"]["/api/v1/loans/{id}/return/"]["post"]
         assert "requestBody" not in returning
-        assert "200" in returning["responses"]
+        assert returning["responses"]["200"]["content"]["application/json"]["schema"][
+            "$ref"
+        ].endswith("/Loan")
 
     def test_schema_carries_request_id(self, client, db):
         response = client.get("/api/schema/?format=json")

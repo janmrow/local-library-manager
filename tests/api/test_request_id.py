@@ -1,13 +1,18 @@
 """Slice 4 observability: X-Request-ID is generated, propagated, and logged."""
 
+import json
 import logging
 import re
 import uuid
 
 import pytest
+from django.contrib.auth import get_user_model
+from django.test import Client, override_settings
 
 from catalog.models import Book, BookCopy
+from circulation.models import Loan
 from config.middleware import RequestIdMiddleware
+from tests.api.helpers import csrf_client, login
 
 
 def _request_lines(caplog):
@@ -92,3 +97,117 @@ class TestRequestId:
         line = records[-1].getMessage()
         assert "GET" in line and "/api/v1/books/" in line and "500" in line
         assert "diag-500" in line
+
+
+@pytest.mark.django_db
+class TestRequestIdOnErrorEnvelopes:
+    """The envelopes diagnosis needs (400/403/409) keep the request ID."""
+
+    @pytest.fixture
+    def reader_client(self, db):
+        get_user_model().objects.create_user(username="reader1", password="pass12345")
+        test_client = csrf_client()
+        token = login(test_client, "reader1", "pass12345")
+        return test_client, token
+
+    @staticmethod
+    def _assert_logged(caplog, rid, method, path, status):
+        records = [
+            r
+            for r in caplog.records
+            if r.name == "config.middleware" and rid in r.getMessage()
+        ]
+        assert records, f"no log line for rid={rid}"
+        line = records[-1].getMessage()
+        assert method in line and path in line and str(status) in line
+
+    def _post_loan(self, test_client, token, rid, payload):
+        return test_client.post(
+            "/api/v1/loans/",
+            data=json.dumps(payload),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+            HTTP_X_REQUEST_ID=rid,
+        )
+
+    def test_400_carries_id(self, caplog, reader_client):
+        test_client, token = reader_client
+        with caplog.at_level(logging.INFO, logger="config.middleware"):
+            response = self._post_loan(
+                test_client, token, "diag-400", {"inventory_code": "bad code!"}
+            )
+        assert response.status_code == 400
+        assert response.json()["code"] == "invalid"
+        assert response.headers.get("X-Request-ID") == "diag-400"
+        self._assert_logged(caplog, "diag-400", "POST", "/api/v1/loans/", 400)
+
+    def test_403_csrf_carries_id(self, caplog, db):
+        test_client = csrf_client()
+        with caplog.at_level(logging.INFO, logger="config.middleware"):
+            response = test_client.post(
+                "/api/v1/loans/",
+                data=json.dumps({"inventory_code": "LL-001"}),
+                content_type="application/json",
+                HTTP_X_REQUEST_ID="diag-403",
+            )
+        assert response.status_code == 403
+        assert response.headers.get("X-Request-ID") == "diag-403"
+        self._assert_logged(caplog, "diag-403", "POST", "/api/v1/loans/", 403)
+
+    def test_403_permission_carries_id(self, caplog, reader_client, db):
+        test_client, token = reader_client
+        reader = get_user_model().objects.get(username="reader1")
+        book = Book.objects.create(title="Solaris", author="Stanisław Lem")
+        copy = BookCopy.objects.create(book=book, inventory_code="LL-501")
+        loan = Loan.objects.create(copy=copy, reader=reader)
+        with caplog.at_level(logging.INFO, logger="config.middleware"):
+            response = test_client.post(
+                f"/api/v1/loans/{loan.id}/return/",
+                HTTP_X_CSRFTOKEN=token,
+                HTTP_X_REQUEST_ID="diag-403",
+            )
+        assert response.status_code == 403
+        assert response.headers.get("X-Request-ID") == "diag-403"
+        self._assert_logged(
+            caplog, "diag-403", "POST", f"/api/v1/loans/{loan.id}/return/", 403
+        )
+
+    def test_409_carries_id(self, caplog, reader_client, db):
+        test_client, token = reader_client
+        book = Book.objects.create(title="Solaris", author="Stanisław Lem")
+        BookCopy.objects.create(book=book, inventory_code="LL-502")
+        with caplog.at_level(logging.INFO, logger="config.middleware"):
+            first = self._post_loan(
+                test_client, token, "diag-201", {"inventory_code": "LL-502"}
+            )
+            second = self._post_loan(
+                test_client, token, "diag-409", {"inventory_code": "LL-502"}
+            )
+        assert first.status_code == 201
+        assert second.status_code == 409
+        assert second.json()["code"] == "copy_unavailable"
+        assert second.headers.get("X-Request-ID") == "diag-409"
+        self._assert_logged(caplog, "diag-409", "POST", "/api/v1/loans/", 409)
+
+
+class TestCrashResponseKeepsHeader:
+    """A real crash still returns a response through this middleware, so the
+    500 carries the header and the log line stays the correlation point."""
+
+    def test_crash_response_keeps_header_and_log_has_rid(self, caplog):
+        plain = Client(enforce_csrf_checks=False, raise_request_exception=False)
+        with caplog.at_level(logging.INFO, logger="config.middleware"):
+            with override_settings(
+                ROOT_URLCONF="tests.api.crash_urls",
+                DEBUG=False,
+                ALLOWED_HOSTS=["*"],
+            ):
+                response = plain.get("/boom/", HTTP_X_REQUEST_ID="diag-500")
+        assert response.status_code == 500
+        assert response.headers.get("X-Request-ID") == "diag-500"
+        records = [
+            r
+            for r in caplog.records
+            if r.name == "config.middleware" and "diag-500" in r.getMessage()
+        ]
+        assert records, "expected a log line carrying the rid for the crash"

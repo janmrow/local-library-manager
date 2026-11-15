@@ -22,6 +22,11 @@ class RequestIdMiddleware:
     is returned on the response and included with method, path, status,
     and duration in the server log, so an HTTP response can be matched
     to its log line and then to the loan rows in PostgreSQL.
+
+    Unhandled crashes (500) are logged with the ID. Django converts a view
+    crash into a 500 response inside this middleware's ``get_response`` call,
+    so the header is still attached; only an exception Django cannot convert
+    escapes with a re-raise after the log line.
     """
 
     HEADER = "X-Request-ID"
