@@ -1,0 +1,170 @@
+/* Retro-modern: warm paper, ink text, one accent. Vanilla CSS, no framework. */
+
+:root {
+  --paper: #faf6ee;
+  --card: #fffdf7;
+  --ink: #2b2620;
+  --muted: #6f6459;
+  --line: #e3d9c6;
+  --accent: #8a3b2e;
+  --accent-ink: #fff8ef;
+  --radius: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1.5;
+}
+
+.wrap {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.site-header {
+  background: var(--ink);
+  color: var(--paper);
+  border-bottom: 4px double var(--line);
+}
+
+.header-inner {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.brand {
+  font-size: 1.4rem;
+  letter-spacing: 0.04em;
+  color: var(--paper);
+  text-decoration: none;
+}
+
+.site-nav {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.site-nav a {
+  color: var(--paper);
+  text-decoration: none;
+  border-bottom: 1px dotted transparent;
+}
+
+.site-nav a:hover {
+  border-bottom-color: var(--paper);
+}
+
+.session {
+  margin-left: auto;
+  color: var(--line);
+  font-size: 0.9rem;
+}
+
+main.wrap {
+  padding-top: 1.5rem;
+  padding-bottom: 2rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem 1.2rem;
+  box-shadow: 0 1px 0 var(--line);
+}
+
+h1 {
+  font-size: 1.8rem;
+  margin: 0 0 1rem;
+  letter-spacing: 0.01em;
+}
+
+form.inline {
+  display: flex;
+  gap: 0.5rem;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+input,
+button {
+  font: inherit;
+}
+
+input {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  min-width: 14rem;
+}
+
+button {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--accent);
+}
+
+ul.books {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+ul.books li {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+}
+
+.pager {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.status {
+  color: var(--muted);
+  min-height: 1.5em;
+}
+
+.site-footer {
+  border-top: 1px solid var(--line);
+  padding: 1rem 0 2rem;
+  color: var(--muted);
+}
