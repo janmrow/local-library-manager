@@ -48,6 +48,17 @@ class TestCheckout:
         assert loan.reader.username == "reader1"
         assert loan.returned_at is None
 
+    def test_padded_max_length_code_checks_out(self, checkout_setup):
+        reader, book = checkout_setup
+        code = "LL-" + "E" * 21
+        BookCopy.objects.create(book=book, inventory_code=code)
+        test_client = csrf_client()
+        token = login(test_client, "reader1", "pass12345")
+        response = checkout(test_client, token, {"inventory_code": f"  {code.lower()}  "})
+
+        assert response.status_code == 201
+        assert response.json()["inventory_code"] == code
+
     def test_invalid_code_returns_400_without_db_write(self, checkout_setup):
         test_client = csrf_client()
         token = login(test_client, "reader1", "pass12345")

@@ -35,7 +35,8 @@ class BookSerializer(serializers.ModelSerializer):
 class BookCreateSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=255)
     author = serializers.CharField(max_length=255)
-    inventory_code = serializers.CharField(max_length=24)
+    # No max_length: length is validated on the trimmed input (see normalize_code).
+    inventory_code = serializers.CharField()
 
     def validate_inventory_code(self, value):
         return normalize_code(value)
@@ -60,7 +61,8 @@ class BookCopyResponseSerializer(serializers.Serializer):
 
 
 class CopyCreateSerializer(serializers.Serializer):
-    inventory_code = serializers.CharField(max_length=24)
+    # No max_length: length is validated on the trimmed input (see normalize_code).
+    inventory_code = serializers.CharField()
 
     def validate_inventory_code(self, value):
         return normalize_code(value)

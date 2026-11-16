@@ -87,6 +87,20 @@ class TestBookCreate:
         assert Book.objects.count() == 0
         assert BookCopy.objects.count() == 0
 
+    def test_padded_max_length_code_accepted(self, db):
+        make_librarian()
+        test_client = csrf_client()
+        token = login(test_client, "lib1", "pass12345")
+        code = "B" * 24
+        response = test_client.post(
+            "/api/v1/books/",
+            data=json.dumps({"title": "New", "author": "Auth", "inventory_code": f"  {code.lower()}  "}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        assert response.status_code == 201
+        assert BookCopy.objects.get().inventory_code == code
+
     def test_invalid_code_returns_400_without_db_write(self, db):
         make_librarian()
         test_client = csrf_client()
@@ -94,6 +108,21 @@ class TestBookCreate:
         response = test_client.post(
             "/api/v1/books/",
             data=json.dumps({"title": "New", "author": "Auth", "inventory_code": "bad code!"}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        assert response.status_code == 400
+        assert response.json()["code"] == "invalid"
+        assert Book.objects.count() == 0
+        assert BookCopy.objects.count() == 0
+
+    def test_overlong_trimmed_code_returns_400_without_db_write(self, db):
+        make_librarian()
+        test_client = csrf_client()
+        token = login(test_client, "lib1", "pass12345")
+        response = test_client.post(
+            "/api/v1/books/",
+            data=json.dumps({"title": "New", "author": "Auth", "inventory_code": "C" * 25}),
             content_type="application/json",
             HTTP_X_CSRFTOKEN=token,
         )
