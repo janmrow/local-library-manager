@@ -22,7 +22,8 @@ pythonpath = ["."]
 
 [tool.ruff.lint]
 # Minimal enforced set: pyflakes (real bugs) + isort (import order).
-# Format (ruff format) intentionally out: 25-file churn, separate decision.
+# Other rule families (RUF/SIM/...) and `ruff format` intentionally out:
+# 25-file churn, separate decision.
 select = ["F", "I"]
 
 [build-system]
