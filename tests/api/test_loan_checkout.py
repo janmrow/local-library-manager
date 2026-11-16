@@ -59,6 +59,21 @@ class TestCheckout:
         assert response.status_code == 201
         assert response.json()["inventory_code"] == code
 
+    def test_unsupported_media_type_returns_415_in_envelope(self, checkout_setup):
+        test_client = csrf_client()
+        token = login(test_client, "reader1", "pass12345")
+        response = test_client.post(
+            "/api/v1/loans/",
+            data='{"inventory_code": "LL-101"}',
+            content_type="text/plain",
+            HTTP_X_CSRFTOKEN=token,
+        )
+
+        assert response.status_code == 415
+        assert response.json()["code"] == "unsupported_media_type"
+        assert response["Cache-Control"] == "no-store"
+        assert Loan.objects.count() == 0
+
     def test_invalid_code_returns_400_without_db_write(self, checkout_setup):
         test_client = csrf_client()
         token = login(test_client, "reader1", "pass12345")
