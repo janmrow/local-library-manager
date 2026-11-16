@@ -1,9 +1,10 @@
 """Loan write operations (slice 3: transactions live here, not in save())."""
 
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from catalog.models import BookCopy
+from catalog.models import BookCopy, normalize_inventory_code
 from circulation.models import Loan
 
 OPEN_LOAN_CONSTRAINT = "unique_open_loan_per_copy"
@@ -38,10 +39,18 @@ def _is_open_loan_conflict(exc: IntegrityError) -> bool:
 
 
 def checkout_loan(*, inventory_code: str, reader) -> Loan:
-    """Insert one open loan; lookup and insert share a single atomic block."""
+    """Insert one open loan; lookup and insert share a single atomic block.
+
+    Normalizes defensively: HTTP callers already normalize via serializers,
+    but direct callers must get the same match-or-404 contract.
+    """
+    try:
+        code = normalize_inventory_code(inventory_code)
+    except ValidationError:
+        raise CopyNotFound from None
     with transaction.atomic():
         try:
-            copy = BookCopy.objects.get(inventory_code=inventory_code)
+            copy = BookCopy.objects.get(inventory_code=code)
         except BookCopy.DoesNotExist:
             raise CopyNotFound from None
         try:
