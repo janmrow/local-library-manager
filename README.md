@@ -52,7 +52,7 @@ The generated OpenAPI document is at `/api/schema/` (JSON via `?format=json`, YA
 curl -i 'http://127.0.0.1:8000/api/v1/books/?q=lem'
 ```
 
-A checkout takes `{"inventory_code":"LL-001"}`. Expect `400` for an invalid request, `403` for a refused session, CSRF or permission check, `404` for an unknown copy, `409` with `copy_unavailable` when the copy already has an open loan, and `415` with `unsupported_media_type` for a non-JSON body. A lost checkout response can be reconciled by reading the caller's open loans.
+A checkout takes `{"inventory_code":"LL-001"}`. Expect `400` for an invalid request, `403` for a refused session, CSRF or permission check, `404` for an unknown copy, `409` with `copy_unavailable` when the copy already has an open loan, and `415` with `unsupported_media_type` for a non-JSON body. A non-JSON body returns `415` only for a signed-in caller; an anonymous caller gets `403` first because DRF checks permissions before parsing the body. A lost checkout response can be reconciled by reading the caller's open loans.
 
 Catalogue creation takes `title`, `author` and `inventory_code`. Adding another copy takes just `inventory_code`. A duplicate code on either catalogue write returns `409` with `inventory_code_taken`.
 

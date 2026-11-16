@@ -24,7 +24,7 @@ Django project `config` with apps `catalog`, `circulation`, `accounts` on one or
 - Code normalize: trim → validate 3–24 ASCII `[A-Za-z0-9-]` on the trimmed input, before uppercase → uppercase, for both save and lookup with one shared function.
 - Create book with first copy in one transaction; duplicate code rolls back both and returns `409 inventory_code_taken`.
 - Loan writes live in `circulation/operations.py` (checkout: lookup + insert with a savepoint; return: select-for-update + conditional update); serializers validate only.
-- Checkout posts `{"inventory_code": "..."}`; success returns `201` with `Location: /api/v1/loans/{id}/`. Occupied copy returns `409 copy_unavailable` mapped after the atomic block rolls back.
+- Checkout posts `{"inventory_code": "..."}`; success returns `201` with `Location: /api/v1/loans/{id}/`. Occupied copy returns `409 copy_unavailable` mapped after the atomic block rolls back. A rejected checkout still consumes one value from the `circulation_loan` id sequence, so loan ids may skip after a `409`; this is normal PostgreSQL behaviour for a rolled-back savepoint, not a lost row.
 - Errors use `{"code": "...", "detail": "..."}` for `400/403/404/405/409`.
 - Scope: reader sees own loans only; out-of-scope loan ID returns `404`.
 - `GET /api/v1/loans/` returns a bare array (no pagination): it lists only the caller's open loans, a bounded set.
@@ -41,7 +41,7 @@ Browser `POST /api/v1/loans/` with session + CSRF → API checks access and code
 
 ## Observability
 
-`X-Request-ID` middleware generates or propagates the ID, returns it on the response, and includes method, path, status, duration, and request ID in the server log. A client-supplied ID is echoed only when it matches `[A-Za-z0-9-]{1,64}`; anything else is replaced with a generated UUID and never rejects the request. Handled crashes (500) still carry the header; the log line always carries `rid=`. `config/settings.py` uses `ENGINE=django.db.backends.postgresql` from `DB_*` in `.env.example`; `pytest-django` uses `DJANGO_SETTINGS_MODULE=config.settings`.
+`X-Request-ID` middleware generates or propagates the ID, returns it on the response, and includes method, path, status, duration, and request ID in the server log. A client-supplied ID is echoed only when it matches `[A-Za-z0-9-]{1,64}`; anything else is replaced with a generated UUID and never rejects the request. Handled crashes (500) still carry the header; the log line always carries `rid=`. Non-API paths (e.g. unknown pages outside `/api/v1/`) return the default HTML `404` when `DEBUG` is on, but they still carry `X-Request-ID` and the `rid=` log line, so response-to-log correlation works there too. On `4xx` the server emits two log lines for one request: the `config.middleware` `INFO` line with `rid=` (use this for correlation) plus Django's `django.request` `WARNING` without an id; filter by `rid=` when matching. `config/settings.py` uses `ENGINE=django.db.backends.postgresql` from `DB_*` in `.env.example`; `pytest-django` uses `DJANGO_SETTINGS_MODULE=config.settings`.
 
 ## Frontend
 
