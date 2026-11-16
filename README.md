@@ -33,12 +33,13 @@ The generated OpenAPI document is at `/api/schema/` (JSON via `?format=json`, YA
 
 | Method and path | Who | Result |
 | --- | --- | --- |
+| `GET /api/v1/` | Anyone | API root with a link to the catalogue. |
 | `GET /api/v1/books/?q=lem` | Anyone | Paginated catalogue with available copy counts. Search matches title or author. |
 | `GET /api/v1/books/{id}/` | Anyone | One catalogue record with its current availability. |
 | `POST /api/v1/accounts/` | Anyone with valid CSRF | Creates a reader account from a username and password. Returns `201`. |
 | `GET /api/v1/session/` | Anyone | Returns current sign-in state and sets the CSRF cookie. |
 | `POST /api/v1/session/` | Anyone with valid CSRF | Signs in with username and password. Returns `200`. |
-| `DELETE /api/v1/session/` | Signed-in user | Signs out. Returns `204`. |
+| `DELETE /api/v1/session/` | Signed-in user | Signs out. Returns `204`. Logged-out callers get `403` with `{"code":"forbidden"}`. |
 | `POST /api/v1/books/` | Librarian | Creates a catalogue record and its first copy in one transaction. Returns `201`. |
 | `POST /api/v1/books/{id}/copies/` | Librarian | Adds a physical copy to an existing catalogue record. Returns `201`. |
 | `GET /api/v1/loans/` | Signed-in user | Lists the caller's open loans. |
