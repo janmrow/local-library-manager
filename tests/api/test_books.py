@@ -123,7 +123,7 @@ class TestAvailability:
         book = Book.objects.create(title="Solaris", author="Stanisław Lem")
         returned = BookCopy.objects.create(inventory_code="LL-001", book=book)
         open_loan = BookCopy.objects.create(inventory_code="LL-002", book=book)
-        free = BookCopy.objects.create(inventory_code="LL-003", book=book)
+        _free = BookCopy.objects.create(inventory_code="LL-003", book=book)
         Loan.objects.create(copy=returned, reader=user, returned_at=timezone.now())
         Loan.objects.create(copy=open_loan, reader=user)
         expected = {"total_copies": 3, "available_copies": 2}
