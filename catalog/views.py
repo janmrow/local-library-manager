@@ -18,6 +18,7 @@ from catalog.serializers import (
     BookCreateSerializer,
     BookSerializer,
     CopyCreateSerializer,
+    ErrorEnvelopeSerializer,
 )
 
 
@@ -42,9 +43,25 @@ class BookPagination(PageNumberPagination):
                 required=False,
                 description="Filter by title or author (icontains).",
             )
-        ]
+        ],
+        responses={200: BookSerializer, 405: ErrorEnvelopeSerializer},
     ),
-    create=extend_schema(request=BookCreateSerializer, responses={201: BookSerializer}),
+    retrieve=extend_schema(
+        responses={
+            200: BookSerializer,
+            404: ErrorEnvelopeSerializer,
+            405: ErrorEnvelopeSerializer,
+        }
+    ),
+    create=extend_schema(
+        request=BookCreateSerializer,
+        responses={
+            201: BookSerializer,
+            400: ErrorEnvelopeSerializer,
+            403: ErrorEnvelopeSerializer,
+            409: ErrorEnvelopeSerializer,
+        },
+    ),
 )
 class BookViewSet(
     mixins.ListModelMixin,
@@ -111,7 +128,17 @@ class BookViewSet(
         annotated = self.annotated_books().get(pk=book.pk)
         return Response(BookSerializer(annotated).data, status=201)
 
-    @extend_schema(request=CopyCreateSerializer, responses={201: BookCopyResponseSerializer})
+    @extend_schema(
+        request=CopyCreateSerializer,
+        responses={
+            201: BookCopyResponseSerializer,
+            400: ErrorEnvelopeSerializer,
+            403: ErrorEnvelopeSerializer,
+            404: ErrorEnvelopeSerializer,
+            405: ErrorEnvelopeSerializer,
+            409: ErrorEnvelopeSerializer,
+        },
+    )
     @action(detail=True, methods=["post"], url_path="copies")
     def add_copy(self, request, pk=None):
         enforce_csrf_without_session(request)

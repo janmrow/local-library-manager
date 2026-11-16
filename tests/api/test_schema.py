@@ -120,6 +120,23 @@ class TestOpenApiSchema:
         (param,) = [p for p in listed["parameters"] if p["name"] == "q"]
         assert param["in"] == "query" and param.get("required", False) is False
 
+    def test_schema_documents_available_codes_as_string_array(self, client, db):
+        doc = client.get("/api/schema/?format=json").json()
+        codes = doc["components"]["schemas"]["Book"]["properties"]["available_codes"]
+        assert codes["type"] == "array"
+        assert codes["items"] == {"type": "string"}
+
+    def test_schema_documents_book_error_envelope(self, client, db):
+        doc = client.get("/api/schema/?format=json").json()
+        envelope = doc["components"]["schemas"]["ErrorEnvelope"]
+        assert set(envelope["properties"]) == {"code", "detail"}
+        assert set(envelope["required"]) == {"code", "detail"}
+        detail = doc["paths"]["/api/v1/books/{id}/"]["get"]["responses"]
+        for status in ("404", "405"):
+            assert detail[status]["content"]["application/json"]["schema"]["$ref"].endswith(
+                "/ErrorEnvelope"
+            )
+
     def test_schema_documents_return_without_request_body(self, client, db):
         response = client.get("/api/schema/?format=json")
         assert response.status_code == 200
