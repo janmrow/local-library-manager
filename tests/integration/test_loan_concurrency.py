@@ -8,8 +8,8 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import connection, transaction
-from django.utils import timezone
 from django.test import Client
+from django.utils import timezone
 
 from accounts.permissions import LIBRARIANS_GROUP
 from catalog.models import Book, BookCopy
