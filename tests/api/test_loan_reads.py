@@ -123,6 +123,17 @@ class TestLoanReads:
         assert response["Cache-Control"] == "no-store"
         assert response.json()["code"] == "forbidden"
 
+    def test_anonymous_detail_of_missing_loan_returns_403(self, loan_setup):
+        # Auth runs before scope and before existence: anonymous gets 403
+        # (not 404) even for an id that belongs to nobody, so loan
+        # existence is never revealed to an unauthenticated caller.
+        test_client = csrf_client()
+        response = test_client.get("/api/v1/loans/999999/")
+
+        assert response.status_code == 403
+        assert response["Cache-Control"] == "no-store"
+        assert response.json()["code"] == "forbidden"
+
     def test_list_orders_open_loans_by_borrowed_then_id(self, db):
         from datetime import timedelta
 
