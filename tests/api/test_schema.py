@@ -136,6 +136,11 @@ class TestOpenApiSchema:
             assert detail[status]["content"]["application/json"]["schema"]["$ref"].endswith(
                 "/ErrorEnvelope"
             )
+        listed = doc["paths"]["/api/v1/books/"]["get"]["responses"]
+        for status in ("404", "405"):
+            assert listed[status]["content"]["application/json"]["schema"]["$ref"].endswith(
+                "/ErrorEnvelope"
+            )
 
     def test_schema_documents_return_without_request_body(self, client, db):
         response = client.get("/api/schema/?format=json")
