@@ -1,4 +1,4 @@
-"""Browse page routes (slices 1-2: catalogue + account pages)."""
+"""Browse page routes (slices 1-3: catalogue, account, and circulation pages)."""
 
 from django.urls import path
 from django.views.generic import TemplateView
