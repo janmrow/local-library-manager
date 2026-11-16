@@ -103,6 +103,25 @@ class TestPagination:
         assert second.json()["results"][0]["title"] == "Book 20"
         assert second.json()["previous"] is not None
 
+    @pytest.mark.parametrize("page", ["0", "abc", "9999"])
+    def test_invalid_page_returns_not_found_envelope(self, client, db, page):
+        book = Book.objects.create(title="Solaris", author="Stanisław Lem")
+        BookCopy.objects.create(inventory_code="LL-001", book=book)
+        response = client.get("/api/v1/books/", {"page": page})
+        assert response.status_code == 404
+        body = response.json()
+        assert body["code"] == "not_found"
+        assert "detail" in body
+
+    def test_invalid_page_with_query_returns_not_found_envelope(self, client, db):
+        book = Book.objects.create(title="Solaris", author="Stanisław Lem")
+        BookCopy.objects.create(inventory_code="LL-001", book=book)
+        response = client.get("/api/v1/books/", {"q": "lem", "page": "9999"})
+        assert response.status_code == 404
+        body = response.json()
+        assert body["code"] == "not_found"
+        assert "detail" in body
+
 
 @pytest.mark.django_db
 class TestAvailability:
