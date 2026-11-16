@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from catalog.models import Book, BookCopy, normalize_inventory_code
@@ -28,8 +29,16 @@ class BookSerializer(serializers.ModelSerializer):
             "available_codes",
         ]
 
+    @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_available_codes(self, obj):
         return [copy.inventory_code for copy in obj.copies.all() if not copy.open_loans]
+
+
+class ErrorEnvelopeSerializer(serializers.Serializer):
+    """Schema-only shape of the {"code", "detail"} error envelope."""
+
+    code = serializers.CharField()
+    detail = serializers.CharField()
 
 
 class BookCreateSerializer(serializers.Serializer):
