@@ -1,6 +1,15 @@
-"""JSON error envelope for API errors (slice 3: 400/403/404/405 in envelope)."""
+"""JSON error envelope for API errors (4xx always carry {"code", "detail"})."""
 
 from rest_framework.views import exception_handler
+
+# Explicit codes for client errors handled by the fallback branch below.
+# Anything else 4xx falls back to "invalid".
+_CLIENT_ERROR_CODES = {
+    401: "unauthenticated",
+    404: "not_found",
+    415: "unsupported_media_type",
+    429: "too_many_requests",
+}
 
 
 def _flatten_detail(data) -> str:
@@ -38,4 +47,7 @@ def catalogue_exception_handler(exc, context):
             "code": "not_found",
             "detail": response.data.get("detail", "Not found."),
         }
+    elif 400 <= response.status_code < 500:
+        code = _CLIENT_ERROR_CODES.get(response.status_code, "invalid")
+        response.data = {"code": code, "detail": _flatten_detail(response.data)}
     return response
