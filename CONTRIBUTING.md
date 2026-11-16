@@ -3,12 +3,12 @@
 ## Branches
 
 - `main` is protected. Direct push to `main` is forbidden; landing only via the rebase-merge button.
-- Work in short-lived branches from up-to-date `main`: `feat/<kebab>`, `fix/<kebab>`, `test/<kebab>`, `chore/<kebab>`, `docs/<kebab>`. Example: `feat/catalogue-browse`, `fix/loan-409-on-retry`. Update the branch with rebase; no merge commits on branches.
+- Work in short-lived branches from up-to-date `main`: `feat/<kebab>`, `fix/<kebab>`, `test/<kebab>`, `chore/<kebab>`, `docs/<kebab>`, `refactor/<kebab>`. Example: `feat/catalogue-browse`, `fix/loan-409-on-retry`. Update the branch with rebase; no merge commits on branches.
 - One observable behaviour per branch; prefer a single commit per PR (fixups via `git commit --amend`). With several commits, each follows the subject format; the PR title describes the whole change.
 
 ## Commits
 
-- Conventional Commits in English: `feat:`, `fix:`, `test:`, `docs:`, `chore:`.
+- Conventional Commits in English: `feat:`, `fix:`, `test:`, `docs:`, `chore:`, `refactor:`.
 - Subject: `<type>: <imperative verb + what>`, max 72 chars, no scope, e.g. `feat: add catalogue search by author`. Code, tests, and docs may land as separate commits of matching types; fixups go through `git commit --amend`.
 
 ## Pull requests
