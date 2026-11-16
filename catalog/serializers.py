@@ -1,5 +1,4 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db import transaction
 from rest_framework import serializers
 
 from catalog.models import Book, BookCopy, normalize_inventory_code
@@ -42,12 +41,13 @@ class BookCreateSerializer(serializers.Serializer):
         return normalize_code(value)
 
     def create(self, validated_data):
-        with transaction.atomic():
-            book = Book.objects.create(
-                title=validated_data["title"],
-                author=validated_data["author"],
-            )
-            BookCopy.objects.create(book=book, inventory_code=validated_data["inventory_code"])
+        # Atomicity is owned by the view (BookViewSet.create wraps this call);
+        # serializers validate only.
+        book = Book.objects.create(
+            title=validated_data["title"],
+            author=validated_data["author"],
+        )
+        BookCopy.objects.create(book=book, inventory_code=validated_data["inventory_code"])
         return book
 
 
