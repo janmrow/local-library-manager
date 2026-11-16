@@ -32,6 +32,21 @@ class TestAddCopy:
         assert copy.book_id == book.pk
         assert BookCopy.objects.count() == 2
 
+    def test_padded_max_length_code_accepted(self, db):
+        make_librarian()
+        book = Book.objects.create(title="T", author="A")
+        test_client = csrf_client()
+        token = login(test_client, "lib1", "pass12345")
+        code = "D" * 24
+        response = test_client.post(
+            f"/api/v1/books/{book.pk}/copies/",
+            data=json.dumps({"inventory_code": f"  {code.lower()}  "}),
+            content_type="application/json",
+            HTTP_X_CSRFTOKEN=token,
+        )
+        assert response.status_code == 201
+        assert BookCopy.objects.get().inventory_code == code
+
     def test_duplicate_code_returns_409_without_write(self, db):
         make_librarian()
         book = Book.objects.create(title="T", author="A")

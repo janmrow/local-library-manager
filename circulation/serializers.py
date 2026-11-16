@@ -16,7 +16,8 @@ class LoanSerializer(serializers.ModelSerializer):
 
 
 class CheckoutSerializer(serializers.Serializer):
-    inventory_code = serializers.CharField(max_length=24)
+    # No max_length: length is validated on the trimmed input (see normalize_code).
+    inventory_code = serializers.CharField()
 
     def validate_inventory_code(self, value):
         return normalize_code(value)
