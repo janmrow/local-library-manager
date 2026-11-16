@@ -44,7 +44,7 @@ class BookPagination(PageNumberPagination):
                 description="Filter by title or author (icontains).",
             )
         ],
-        responses={200: BookSerializer, 405: ErrorEnvelopeSerializer},
+        responses={200: BookSerializer, 404: ErrorEnvelopeSerializer, 405: ErrorEnvelopeSerializer},
     ),
     retrieve=extend_schema(
         responses={
