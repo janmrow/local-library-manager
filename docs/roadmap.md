@@ -16,13 +16,19 @@ Exit: `curl GET books` shows seeded rows, browse scenarios green (`pytest tests/
 
 Goal: accounts and roles. Registration, sign-in, sign-out, `Librarians` group, librarian add book and copy. Check session cookie, CSRF on login, no DB write on refused access. Permission tests start at the first protected endpoint. Second Playwright flow.
 
+Exit: permission tests green at the first protected endpoint (`pytest`) + second Playwright flow green (account and librarian catalogue).
+
 ## 3. Checkout and return
 
 Goal: circulation by code. Validation unit tests, role and conflict API tests, concurrency `201` + `409` on real PostgreSQL with barrier sync and no sleeps, idempotent return incl. parallel returns and retry after re-loan. Third Playwright flow covering reader plus librarian return.
 
+Exit: full permission matrix + concurrency `201`/`409` (separate connections, no sleeps) + idempotent return incl. parallel returns and retry after re-loan (`pytest`) + third Playwright flow green.
+
 ## 4. Local release
 
-Goal: fresh-clone run, migrations, both CI jobs green, README accurate, OpenAPI published, one diagnosis note with HTTP, log, and DB evidence.
+Goal: fresh-clone run, migrations, all CI jobs green, README accurate, OpenAPI published, one diagnosis note with HTTP, log, and DB evidence.
+
+Exit: three flows green (`pytest` + Playwright) + lockfiles consistent + `makemigrations --check` clean + OpenAPI published + one diagnosis note with HTTP, log, and DB evidence.
 
 ## Non-goals
 
