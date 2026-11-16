@@ -134,4 +134,3 @@ def test_non_loan_paths_carry_no_no_store_header(db, client):
     assert session.status_code == 200
     assert "Cache-Control" not in books
     assert "Cache-Control" not in session
-
